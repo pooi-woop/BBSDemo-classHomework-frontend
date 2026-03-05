@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { User, SwitchButton } from '@element-plus/icons-vue'
+import { User, SwitchButton, Search } from '@element-plus/icons-vue'
 import { tokenManager } from '@/utils/auth'
 
 const router = useRouter()
@@ -11,6 +11,7 @@ const userStore = useUserStore()
 
 const activeIndex = ref('/')
 const isInitialized = ref(false)
+const searchKeyword = ref('')
 
 // 直接使用 store 的计算属性
 const isLoggedIn = computed(() => userStore.isLoggedIn)
@@ -31,6 +32,17 @@ const handleLogout = async () => {
 
 const goToProfile = () => {
   router.push('/profile')
+}
+
+const handleSearch = () => {
+  if (searchKeyword.value.trim()) {
+    // 跳转到搜索页面或论坛页面并传递搜索关键词
+    router.push({
+      path: '/forum',
+      query: { search: searchKeyword.value.trim() }
+    })
+    searchKeyword.value = ''
+  }
 }
 
 const handleSelect = (path: string) => {
@@ -65,6 +77,18 @@ const handleSelect = (path: string) => {
     <el-menu-item index="/news">资讯</el-menu-item>
     <el-menu-item index="/community">社区</el-menu-item>
     <el-menu-item index="/about">关于</el-menu-item>
+
+    <!-- 搜索框 -->
+    <div class="search-container">
+      <el-input
+        v-model="searchKeyword"
+        placeholder="搜索帖子..."
+        :prefix-icon="Search"
+        clearable
+        @keyup.enter="handleSearch"
+        class="search-input"
+      />
+    </div>
 
     <!-- 右侧空白填充 -->
     <div class="flex-grow" />
@@ -144,6 +168,39 @@ const handleSelect = (path: string) => {
   margin-right: 6px;
 }
 
+.search-container {
+  margin: 0 20px;
+  min-width: 200px;
+  max-width: 300px;
+  align-self: center;
+}
+
+.search-input {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  border-radius: 20px;
+}
+
+.search-input :deep(.el-input__wrapper) {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  box-shadow: none;
+}
+
+.search-input :deep(.el-input__inner) {
+  background: transparent;
+  border: none;
+  color: #fff;
+}
+
+.search-input :deep(.el-input__inner::placeholder) {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.search-input :deep(.el-input__prefix) {
+  color: rgba(255, 255, 255, 0.6);
+}
+
 /* 移动端适配 */
 @media (max-width: 768px) {
   .navbar :deep(.el-menu-item:not(.logo-item)) {
@@ -151,6 +208,10 @@ const handleSelect = (path: string) => {
   }
   
   .username {
+    display: none;
+  }
+  
+  .search-container {
     display: none;
   }
 }

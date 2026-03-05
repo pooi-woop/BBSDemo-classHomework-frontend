@@ -50,6 +50,11 @@ export const userApi = {
     return api.get('/profile')
   },
   
+  // 获取其他用户信息
+  getUserProfile: (userId: string): Promise<any> => {
+    return api.get(`/users/${userId}`)
+  },
+  
   // 更新昵称
   updateNickname: (data: { nickname: string }): Promise<any> => {
     return api.put('/profile/nickname', data)
@@ -67,6 +72,16 @@ export const userApi = {
         'Content-Type': 'multipart/form-data'
       }
     })
+  },
+  
+  // 获取用户列表（管理员）
+  getUsers: (params: { page: number; page_size: number }): Promise<any> => {
+    return api.get('/users', { params })
+  },
+  
+  // 搜索用户
+  searchUsers: (keyword: string): Promise<any> => {
+    return api.get('/users/search', { params: { keyword } })
   }
 }
 
@@ -77,9 +92,18 @@ export const postApi = {
     return api.get('/posts', { params })
   },
   
+  // 搜索帖子
+  searchPosts: (params: { keyword: string; page: number; page_size: number }): Promise<any> => {
+    return api.get('/posts/search', { params })
+  },
+  
   // 获取帖子详情
   getPostDetail: (postId: string): Promise<any> => {
-    return api.get(`/posts/${postId}`)
+    return api.get(`/posts/${postId}`, {
+      params: {
+        t: Date.now() // 添加时间戳避免缓存
+      }
+    })
   },
   
   // 创建帖子
@@ -110,8 +134,18 @@ export const commentApi = {
     return api.get(`/posts/${postId}/comments`, { params })
   },
   
+  // 获取评论的回复（楼中楼）
+  getReplies: (commentId: string, params: { page: number; page_size: number }): Promise<any> => {
+    return api.get(`/comments/${commentId}/replies`, { params })
+  },
+  
   // 创建评论
   createComment: (data: { post_id: string; content: string }): Promise<any> => {
+    return api.post('/comments', data)
+  },
+  
+  // 创建回复（楼中楼）
+  createReply: (data: { post_id: string; parent_id: string; content: string }): Promise<any> => {
     return api.post('/comments', data)
   },
   
@@ -146,5 +180,75 @@ export const likeApi = {
   // 取消点赞评论
   unlikeComment: (commentId: string): Promise<any> => {
     return api.delete(`/comments/${commentId}/like`)
+  }
+}
+
+// 收藏相关 API
+export const favoriteApi = {
+  // 获取收藏夹
+  getFolders: (): Promise<any> => {
+    return api.get('/folders')
+  },
+  
+  // 创建收藏夹
+  createFolder: (data: { name: string }): Promise<any> => {
+    return api.post('/folders', data)
+  },
+  
+  // 更新收藏夹
+  updateFolder: (folderId: string, data: { name: string }): Promise<any> => {
+    return api.put(`/folders/${folderId}`, data)
+  },
+  
+  // 删除收藏夹
+  deleteFolder: (folderId: string): Promise<any> => {
+    return api.delete(`/folders/${folderId}`)
+  },
+  
+  // 收藏帖子
+  addFavorite: (data: { post_id: string; folder_id: string }): Promise<any> => {
+    return api.post('/favorites', data)
+  },
+  
+  // 取消收藏
+  removeFavorite: (postId: string): Promise<any> => {
+    return api.delete(`/posts/${postId}/favorite`)
+  },
+  
+  // 移动收藏
+  moveFavorite: (postId: string, data: { folder_id: string }): Promise<any> => {
+    return api.put(`/posts/${postId}/favorite`, data)
+  },
+  
+  // 获取收藏列表
+  getFavorites: (params: { page: number; page_size: number }): Promise<any> => {
+    return api.get('/my/favorites', { params })
+  },
+  
+  // 按收藏夹获取
+  getFolderPosts: (folderId: string, params: { page: number; page_size: number }): Promise<any> => {
+    return api.get(`/folders/${folderId}/posts`, { params })
+  }
+}
+
+// 拉黑相关 API
+export const blockApi = {
+  // 拉黑用户
+  blockUser: (userId: string): Promise<any> => {
+    return api.post(`/users/${userId}/block`)
+  },
+  
+  // 取消拉黑
+  unblockUser: (userId: string): Promise<any> => {
+    return api.delete(`/users/${userId}/block`, {
+      params: {
+        t: Date.now() // 添加时间戳避免缓存
+      }
+    })
+  },
+  
+  // 获取拉黑列表
+  getBlockedUsers: (params: { page: number; page_size: number; t?: number }): Promise<any> => {
+    return api.get('/my/blocked', { params })
   }
 }

@@ -19,7 +19,7 @@ api.interceptors.request.use(
       config.headers = config.headers || {}
       config.headers.Authorization = `Bearer ${token}`
     }
-    console.log('发送请求:', config.method?.toUpperCase(), config.url, config.data)
+    console.log('发送请求:', config.method?.toUpperCase(), config.url, config.data, config.params)
     return config
   },
   (error: any) => {
@@ -38,6 +38,19 @@ api.interceptors.response.use(
     }
     
     console.log('收到响应:', response.config?.url, data)
+    console.log('响应状态:', response.status)
+    
+    // 检查响应是否包含错误信息
+    if (data && data.error) {
+      console.error('响应包含错误:', data.error)
+      return Promise.reject({
+        response: {
+          data: data,
+          status: response.status
+        }
+      })
+    }
+    
     return data
   },
   (error: any) => {

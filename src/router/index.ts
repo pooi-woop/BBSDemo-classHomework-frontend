@@ -48,6 +48,31 @@ const router = createRouter({
       path: '/profile',
       name: 'profile',
       component: () => import('../components/UserProfile.vue')
+    },
+    {
+      path: '/favorites',
+      name: 'favorites',
+      component: () => import('../views/FavoritesView.vue')
+    },
+    {
+      path: '/blocked',
+      name: 'blocked',
+      component: () => import('../views/BlockedUsersView.vue')
+    },
+    {
+      path: '/admin',
+      name: 'admin',
+      component: () => import('../views/AdminView.vue')
+    },
+    {
+      path: '/my-posts',
+      name: 'my-posts',
+      component: () => import('../views/MyPostsView.vue')
+    },
+    {
+      path: '/user/:id',
+      name: 'user-profile',
+      component: () => import('../views/UserProfileView.vue')
     }
   ]
 })

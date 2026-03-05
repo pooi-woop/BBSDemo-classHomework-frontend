@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { authApi } from '@/services/userApi'
@@ -7,6 +8,7 @@ import { authApi } from '@/services/userApi'
 
 // 使用 Pinia Store
 const userStore = useUserStore()
+const router = useRouter()
 
 // 编辑状态
 const isEditingNickname = ref(false)
@@ -394,15 +396,20 @@ const sendDeleteCode = async () => {
     deleteLoading.value = true
     deleteError.value = ''
     
-    await authApi.sendCode({
+    console.log('开始发送注销验证码，邮箱:', deleteAccountForm.value.email)
+    
+    const response = await authApi.sendCode({
       email: deleteAccountForm.value.email,
       type: 'delete' // 使用 delete 类型的验证码
     })
     
+    console.log('注销验证码发送成功，响应:', response)
     ElMessage.success('验证码已发送到您的邮箱，请查收')
   } catch (err: any) {
+    console.error('发送注销验证码错误:', err)
+    console.error('错误状态码:', err.response?.status)
+    console.error('错误数据:', err.response?.data)
     deleteError.value = err.response?.data?.error || '发送验证码失败'
-    console.error('发送验证码错误:', err)
   } finally {
     deleteLoading.value = false
   }
@@ -453,6 +460,26 @@ const confirmDeleteAccount = async () => {
   } finally {
     deleteLoading.value = false
   }
+}
+
+// 跳转到收藏夹
+const goToFavorites = () => {
+  router.push('/favorites')
+}
+
+// 跳转到黑名单管理
+const goToBlocked = () => {
+  router.push('/blocked')
+}
+
+// 跳转到管理员后台
+const goToAdmin = () => {
+  router.push('/admin')
+}
+
+// 跳转到我的帖子
+const goToMyPosts = () => {
+  router.push('/my-posts')
 }
 
 // 组件挂载时初始化
@@ -587,6 +614,16 @@ onMounted(() => {
 
       <!-- 操作按钮 -->
       <div class="actions">
+        <el-button type="primary" @click="goToFavorites">我的收藏</el-button>
+        <el-button type="warning" @click="goToBlocked">黑名单管理</el-button>
+        <el-button type="success" @click="goToMyPosts">我的帖子</el-button>
+        <el-button 
+          v-if="userStore.user?.is_admin" 
+          type="info" 
+          @click="goToAdmin"
+        >
+          管理员后台
+        </el-button>
         <el-button type="danger" @click="handleLogout">退出登录</el-button>
         <el-button type="danger" plain @click="handleDeleteAccount">注销账号</el-button>
       </div>

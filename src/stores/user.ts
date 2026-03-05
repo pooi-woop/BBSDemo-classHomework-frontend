@@ -68,7 +68,7 @@ export const useUserStore = defineStore('user', () => {
       // 后端返回格式: { user: { ... } }
       user.value = response.user || response
     } catch (err: any) {
-      error.value = err.response?.data?.error || '获取用户信息失败'
+      error.value = err.response?.error || '获取用户信息失败'
       console.error('获取用户信息错误:', err)
       // 如果获取失败且是 401 错误，清除登录状态
       if (err.response?.status === 401) {
@@ -100,7 +100,7 @@ export const useUserStore = defineStore('user', () => {
 
       return true
     } catch (err: any) {
-      error.value = err.response?.data?.error || '更新用户信息失败'
+      error.value = err.response?.error || '更新用户信息失败'
       console.error('更新用户信息错误:', err)
       return false
     } finally {
@@ -127,7 +127,7 @@ export const useUserStore = defineStore('user', () => {
 
       return true
     } catch (err: any) {
-      error.value = err.response?.data?.error || '上传头像失败'
+      error.value = err.response?.error || '上传头像失败'
       console.error('上传头像错误:', err)
       return false
     } finally {
@@ -148,7 +148,7 @@ export const useUserStore = defineStore('user', () => {
 
       return true
     } catch (err: any) {
-      error.value = err.response?.data?.error || '注销账号失败'
+      error.value = err.response?.error || '注销账号失败'
       console.error('注销账号错误:', err)
       return false
     } finally {
@@ -174,7 +174,7 @@ export const useUserStore = defineStore('user', () => {
 
       return true
     } catch (err: any) {
-      error.value = err.response?.data?.error || '登录失败'
+      error.value = err.response?.error || '登录失败'
       console.error('登录错误:', err)
       return false
     } finally {

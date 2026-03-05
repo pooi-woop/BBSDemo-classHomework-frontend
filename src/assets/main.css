@@ -33,3 +33,46 @@ a,
     padding: 0 2rem;
   }
 }
+
+/* 弹窗居中样式 */
+.center-dialog .el-message-box__wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+/* 确保所有 Element Plus 弹窗居中 */
+.el-dialog__wrapper {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  min-height: 100vh !important;
+}
+
+/* 消息提示居中 */
+.el-message {
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  margin-left: 0 !important;
+}
+
+/* 通知提示居中 */
+.el-notification {
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  margin-left: 0 !important;
+}
+
+/* 确保弹窗内容在小屏幕上也能正常显示 */
+@media (max-width: 768px) {
+  .el-dialog {
+    width: 90% !important;
+    margin: 0 auto !important;
+  }
+  
+  .el-message-box {
+    width: 90% !important;
+    margin: 0 auto !important;
+  }
+}

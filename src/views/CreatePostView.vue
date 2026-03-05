@@ -61,7 +61,7 @@ const handleSubmit = async () => {
     
     // 创建成功后跳转到帖子详情
     // 后端返回格式: { post: { id: ..., title: ..., ... } }
-    const postId = response.data.post?.id || response.data.id
+    const postId = response.post?.id || response.id
     if (postId) {
       success.value = '帖子发布成功！'
       setTimeout(() => {
@@ -72,7 +72,7 @@ const handleSubmit = async () => {
     }
   } catch (err: any) {
     console.error('发布帖子错误:', err)
-    error.value = err.response?.data?.error || err.message || '发布失败，请稍后重试'
+    error.value = err.response?.error || err.message || '发布失败，请稍后重试'
   } finally {
     isLoading.value = false
   }

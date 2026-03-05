@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { authApi } from '../services/userApi'
 import { tokenManager } from '../utils/auth'
 import { useUserStore } from '@/stores/user'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -98,10 +99,20 @@ const sendCode = async () => {
     })
     
     console.log('验证码发送成功:', response)
-    success.value = '验证码已发送到您的邮箱，请查收'
+    ElMessage.success('验证码已发送到您的邮箱，请查收')
   } catch (err: any) {
     console.error('发送验证码错误详情:', err)
-    error.value = err.response?.data?.error || err.message || '发送验证码失败，请检查网络连接'
+    const errorMsg = err.response?.data?.error || err.message || '发送验证码失败，请检查网络连接'
+    error.value = errorMsg
+    
+    // 如果邮箱已被注册，弹出提示
+    if (err.response?.status === 409 || errorMsg.includes('邮箱已被注册') || errorMsg.includes('already exists') || errorMsg.includes('邮箱已存在')) {
+      ElMessageBox.alert('邮箱已被注册', '提示', {
+        confirmButtonText: '确定',
+        type: 'warning',
+        center: true
+      })
+    }
   } finally {
     isLoading.value = false
   }
@@ -140,7 +151,17 @@ const handleRegister = async () => {
     }
   } catch (err: any) {
     console.error('注册错误详情:', err)
-    error.value = err.response?.data?.error || err.message || '注册失败'
+    const errorMsg = err.response?.data?.error || err.message || '注册失败'
+    error.value = errorMsg
+    
+    // 如果邮箱已被注册，弹出提示
+    if (err.response?.status === 409 || errorMsg.includes('邮箱已被注册') || errorMsg.includes('already exists')) {
+      ElMessageBox.alert('邮箱已被注册', '提示', {
+        confirmButtonText: '确定',
+        type: 'warning',
+        center: true
+      })
+    }
   } finally {
     isLoading.value = false
   }
@@ -172,7 +193,7 @@ const sendResetCode = async () => {
     })
     
     console.log('验证码发送成功:', response)
-    success.value = '验证码已发送到您的邮箱，请查收'
+    ElMessage.success('验证码已发送到您的邮箱，请查收')
   } catch (err: any) {
     console.error('发送验证码错误详情:', err)
     error.value = err.response?.data?.error || err.message || '发送验证码失败，请检查网络连接'
