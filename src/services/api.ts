@@ -1,0 +1,54 @@
+import axios from 'axios'
+import { tokenManager } from '../utils/auth'
+
+// 创建 axios 实例
+const api = axios.create({
+  // 使用相对路径，通过 Vite 代理转发到后端
+  baseURL: '/api',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+
+// 请求拦截器
+api.interceptors.request.use(
+  (config) => {
+    const token = tokenManager.getToken()
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    console.log('发送请求:', config.method?.toUpperCase(), config.url, config.data)
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  }
+)
+
+// 响应拦截器
+api.interceptors.response.use(
+  (response) => {
+    const data = response.data
+    
+    // 如果响应中包含 token，自动保存
+    if (data && data.token) {
+      tokenManager.setToken(data.token)
+    }
+    
+    console.log('收到响应:', response.config.url, data)
+    return data
+  },
+  (error) => {
+    console.error('请求错误:', error.response?.status, error.response?.data || error.message)
+    
+    // 处理 401 未授权错误
+    if (error.response && error.response.status === 401) {
+      tokenManager.removeToken()
+    }
+    
+    return Promise.reject(error)
+  }
+)
+
+export default api
