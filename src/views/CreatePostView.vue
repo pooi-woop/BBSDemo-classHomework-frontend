@@ -61,7 +61,7 @@ const handleSubmit = async () => {
     
     // 创建成功后跳转到帖子详情
     // 后端返回格式: { post: { id: ..., title: ..., ... } }
-    const postId = response.post?.id || response.id
+    const postId = response.data.post?.id || response.data.id
     if (postId) {
       success.value = '帖子发布成功！'
       setTimeout(() => {

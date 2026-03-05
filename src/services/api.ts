@@ -13,22 +13,23 @@ const api = axios.create({
 
 // 请求拦截器
 api.interceptors.request.use(
-  (config) => {
+  (config: any) => {
     const token = tokenManager.getToken()
     if (token) {
+      config.headers = config.headers || {}
       config.headers.Authorization = `Bearer ${token}`
     }
     console.log('发送请求:', config.method?.toUpperCase(), config.url, config.data)
     return config
   },
-  (error) => {
+  (error: any) => {
     return Promise.reject(error)
   }
 )
 
-// 响应拦截器
+// 响应拦截器 - 直接返回 response.data
 api.interceptors.response.use(
-  (response) => {
+  (response: any) => {
     const data = response.data
     
     // 如果响应中包含 token，自动保存
@@ -36,10 +37,10 @@ api.interceptors.response.use(
       tokenManager.setToken(data.token)
     }
     
-    console.log('收到响应:', response.config.url, data)
+    console.log('收到响应:', response.config?.url, data)
     return data
   },
-  (error) => {
+  (error: any) => {
     console.error('请求错误:', error.response?.status, error.response?.data || error.message)
     
     // 处理 401 未授权错误

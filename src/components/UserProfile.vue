@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
+import { ElMessageBox, ElMessage } from 'element-plus'
+import { authApi } from '@/services/userApi'
 // 移除 vue-cropper 导入，改用原生实现
 
 // 使用 Pinia Store
@@ -355,8 +357,8 @@ const cancelCrop = () => {
 // base64 转 Blob
 const dataURLToBlob = (dataURL: string) => {
   const arr = dataURL.split(',')
-  const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png'
-  const bstr = atob(arr[1])
+  const mime = arr[0]?.match(/:(.*?);/)?.[1] || 'image/png'
+  const bstr = atob(arr[1] || '')
   let n = bstr.length
   const u8arr = new Uint8Array(n)
   while (n--) {
@@ -370,6 +372,87 @@ const handleLogout = async () => {
   await userStore.logout()
   // 刷新页面或跳转到首页
   window.location.href = '/'
+}
+
+// 处理注销账号
+const deleteAccountForm = ref({
+  email: '',
+  code: ''
+})
+const showDeleteDialog = ref(false)
+const deleteLoading = ref(false)
+const deleteError = ref('')
+
+// 发送注销验证码
+const sendDeleteCode = async () => {
+  if (!deleteAccountForm.value.email) {
+    deleteError.value = '请输入邮箱地址'
+    return
+  }
+  
+  try {
+    deleteLoading.value = true
+    deleteError.value = ''
+    
+    await authApi.sendCode({
+      email: deleteAccountForm.value.email,
+      type: 'delete' // 使用 delete 类型的验证码
+    })
+    
+    ElMessage.success('验证码已发送到您的邮箱，请查收')
+  } catch (err: any) {
+    deleteError.value = err.response?.data?.error || '发送验证码失败'
+    console.error('发送验证码错误:', err)
+  } finally {
+    deleteLoading.value = false
+  }
+}
+
+// 处理注销账号
+const handleDeleteAccount = () => {
+  // 显示确认对话框
+  ElMessageBox.confirm('确定要注销账号吗？此操作不可撤销！', '警告', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    // 显示验证码输入对话框
+    showDeleteDialog.value = true
+    // 自动填充当前用户邮箱
+    if (userStore.user?.email) {
+      deleteAccountForm.value.email = userStore.user.email
+    }
+  }).catch(() => {
+    // 取消操作
+  })
+}
+
+// 确认注销账号
+const confirmDeleteAccount = async () => {
+  if (!deleteAccountForm.value.email || !deleteAccountForm.value.code) {
+    deleteError.value = '请填写邮箱和验证码'
+    return
+  }
+  
+  try {
+    deleteLoading.value = true
+    deleteError.value = ''
+    
+    const success = await userStore.deleteAccount(deleteAccountForm.value.email, deleteAccountForm.value.code)
+    if (success) {
+      ElMessage.success('账号注销成功')
+      showDeleteDialog.value = false
+      // 跳转到登录页
+      setTimeout(() => {
+        window.location.href = '/login'
+      }, 1000)
+    }
+  } catch (err: any) {
+    deleteError.value = err.response?.data?.error || '注销账号失败'
+    console.error('注销账号错误:', err)
+  } finally {
+    deleteLoading.value = false
+  }
 }
 
 // 组件挂载时初始化
@@ -494,11 +577,18 @@ onMounted(() => {
           <span class="label">邮箱验证：</span>
           <span class="value">{{ userStore.user?.is_verified ? '已验证' : '未验证' }}</span>
         </div>
+
+        <!-- 注销时间 -->
+        <div class="info-item">
+          <span class="label">注销时间：</span>
+          <span class="value">{{ userStore.user?.deleted_at ? formatDate(userStore.user.deleted_at) : '活动中' }}</span>
+        </div>
       </div>
 
       <!-- 操作按钮 -->
       <div class="actions">
         <el-button type="danger" @click="handleLogout">退出登录</el-button>
+        <el-button type="danger" plain @click="handleDeleteAccount">注销账号</el-button>
       </div>
 
       <!-- 错误提示 -->
@@ -534,6 +624,43 @@ onMounted(() => {
         <span class="dialog-footer">
           <el-button @click="cancelCrop">取消</el-button>
           <el-button type="primary" @click="confirmCrop">确认</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 注销账号对话框 -->
+    <el-dialog
+      v-model="showDeleteDialog"
+      title="注销账号"
+      width="400px"
+    >
+      <div class="delete-account-form">
+        <el-form :model="deleteAccountForm" label-width="80px">
+          <el-form-item label="邮箱">
+            <el-input v-model="deleteAccountForm.email" placeholder="请输入邮箱" type="email" />
+          </el-form-item>
+          
+          <el-form-item label="验证码">
+            <el-input v-model="deleteAccountForm.code" placeholder="请输入验证码">
+              <template #append>
+                <el-button @click="sendDeleteCode" :loading="deleteLoading">
+                  发送验证码
+                </el-button>
+              </template>
+            </el-input>
+          </el-form-item>
+          
+          <div v-if="deleteError" class="error-message">
+            {{ deleteError }}
+          </div>
+        </el-form>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="showDeleteDialog = false">取消</el-button>
+          <el-button type="danger" @click="confirmDeleteAccount" :loading="deleteLoading">
+            确认注销
+          </el-button>
         </span>
       </template>
     </el-dialog>

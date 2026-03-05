@@ -19,6 +19,12 @@ const registerForm = ref({
   code: ''
 })
 
+const resetForm = ref({
+  email: '',
+  password: '',
+  code: ''
+})
+
 const activeTab = ref('login')
 const isLoading = ref(false)
 const error = ref('')
@@ -140,6 +146,80 @@ const handleRegister = async () => {
   }
 }
 
+// 发送重置密码验证码
+const sendResetCode = async () => {
+  // 验证邮箱格式
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!resetForm.value.email) {
+    error.value = '请输入邮箱地址'
+    return
+  }
+  if (!emailRegex.test(resetForm.value.email)) {
+    error.value = '请输入正确的邮箱格式'
+    return
+  }
+
+  try {
+    isLoading.value = true
+    error.value = ''
+    success.value = ''
+    
+    console.log('正在发送验证码到:', resetForm.value.email)
+    
+    const response = await authApi.sendCode({
+      email: resetForm.value.email,
+      type: 'reset'
+    })
+    
+    console.log('验证码发送成功:', response)
+    success.value = '验证码已发送到您的邮箱，请查收'
+  } catch (err: any) {
+    console.error('发送验证码错误详情:', err)
+    error.value = err.response?.data?.error || err.message || '发送验证码失败，请检查网络连接'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// 重置密码
+const handleResetPassword = async () => {
+  // 表单验证
+  if (!resetForm.value.email || !resetForm.value.password || !resetForm.value.code) {
+    error.value = '请填写完整信息'
+    return
+  }
+  if (resetForm.value.password.length < 6) {
+    error.value = '密码长度至少6位'
+    return
+  }
+
+  try {
+    isLoading.value = true
+    error.value = ''
+    success.value = ''
+    
+    console.log('正在重置密码:', resetForm.value.email)
+    
+    const response = await authApi.resetPassword(resetForm.value)
+    
+    console.log('重置密码成功:', response)
+    
+    success.value = '密码重置成功，请登录'
+    activeTab.value = 'login'
+    // 清空重置表单
+    resetForm.value = {
+      email: '',
+      password: '',
+      code: ''
+    }
+  } catch (err: any) {
+    console.error('重置密码错误详情:', err)
+    error.value = err.response?.data?.error || err.message || '重置密码失败'
+  } finally {
+    isLoading.value = false
+  }
+}
+
 // 退出登录
 const handleLogout = async () => {
   try {
@@ -179,6 +259,13 @@ const handleLogout = async () => {
           @click="activeTab = 'register'"
         >
           注册
+        </button>
+        <button 
+          class="tab-btn" 
+          :class="{ active: activeTab === 'reset' }"
+          @click="activeTab = 'reset'"
+        >
+          找回密码
         </button>
       </div>
       
@@ -225,6 +312,35 @@ const handleLogout = async () => {
           <el-form-item>
             <el-button type="primary" @click="handleRegister" :loading="isLoading" style="width: 100%">
               注册
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+      
+      <!-- 找回密码表单 -->
+      <div v-if="activeTab === 'reset'" class="form-container">
+        <el-form :model="resetForm" label-width="80px">
+          <el-form-item label="邮箱">
+            <el-input v-model="resetForm.email" placeholder="请输入邮箱" type="email" />
+          </el-form-item>
+          
+          <el-form-item label="新密码">
+            <el-input v-model="resetForm.password" type="password" placeholder="请输入新密码" />
+          </el-form-item>
+          
+          <el-form-item label="验证码">
+            <el-input v-model="resetForm.code" placeholder="请输入验证码">
+              <template #append>
+                <el-button @click="sendResetCode" :loading="isLoading">
+                  发送验证码
+                </el-button>
+              </template>
+            </el-input>
+          </el-form-item>
+          
+          <el-form-item>
+            <el-button type="primary" @click="handleResetPassword" :loading="isLoading" style="width: 100%">
+              重置密码
             </el-button>
           </el-form-item>
         </el-form>

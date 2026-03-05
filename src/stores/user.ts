@@ -15,6 +15,7 @@ export interface User {
   is_admin?: boolean
   is_verified?: boolean
   created_at: string
+  deleted_at?: string // 注销时间
 }
 
 // 使用 Pinia 创建用户状态管理 Store
@@ -134,6 +135,27 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  // 注销账号
+  async function deleteAccount(email: string, code: string) {
+    try {
+      isLoading.value = true
+      error.value = ''
+
+      await authApi.deleteAccount({ email, code })
+
+      // 清除本地状态
+      logout()
+
+      return true
+    } catch (err: any) {
+      error.value = err.response?.data?.error || '注销账号失败'
+      console.error('注销账号错误:', err)
+      return false
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   // 登录
   async function login(email: string, password: string) {
     try {
@@ -189,16 +211,19 @@ export const useUserStore = defineStore('user', () => {
     user,
     isLoading,
     error,
+    
     // Getters
     isLoggedIn,
     displayName,
     avatarUrl,
+    
     // Actions
+    init,
     fetchUserInfo,
     updateUserInfo,
     uploadUserAvatar,
+    deleteAccount,
     login,
-    logout,
-    init
+    logout
   }
 })

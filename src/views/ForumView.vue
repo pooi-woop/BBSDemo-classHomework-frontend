@@ -26,7 +26,7 @@ const fetchPosts = async () => {
     })
     console.log('获取帖子列表响应:', response)
     // 后端返回格式: { posts: [...], total: ... }
-    posts.value = response.posts || response.data || []
+    posts.value = response.posts || response || []
     total.value = response.total || 0
   } catch (err: any) {
     console.error('获取帖子列表错误:', err)

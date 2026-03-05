@@ -27,7 +27,7 @@ const fetchPostDetail = async () => {
     const response = await postApi.getPostDetail(postId.value)
     console.log('获取帖子详情响应:', response)
     // 后端返回格式: { post: { id: ..., title: ..., ... } }
-    post.value = response.post || response
+    post.value = response.data.post || response.data
   } catch (err: any) {
     console.error('获取帖子详情错误:', err)
     console.error('错误状态码:', err.response?.status)
@@ -46,8 +46,8 @@ const fetchComments = async () => {
       page_size: pageSize.value
     })
     
-    comments.value = response.data || []
-    totalComments.value = response.total || 0
+    comments.value = response.data.data || []
+    totalComments.value = response.data.total || 0
   } catch (err: any) {
     console.error('获取评论列表错误', err)
   }
