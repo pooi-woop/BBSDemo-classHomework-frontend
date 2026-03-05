@@ -2,13 +2,18 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { userApi, authApi } from '@/services/userApi'
 import { tokenManager } from '@/utils/auth'
+import { config } from '@/config'
 
 // 用户类型定义
 export interface User {
-  id: string
+  id: string | number
   email: string
-  nickname: string
+  nickname?: string
+  bio?: string
   avatar?: string
+  status?: number
+  is_admin?: boolean
+  is_verified?: boolean
   created_at: string
 }
 
@@ -28,11 +33,23 @@ export const useUserStore = defineStore('user', () => {
   // 用户昵称（如果没有则显示邮箱前缀）
   const displayName = computed(() => {
     if (!user.value) return '未登录'
-    return user.value.nickname || user.value.email.split('@')[0]
+    if (user.value.nickname) return user.value.nickname
+    if (user.value.email) return user.value.email.split('@')[0]
+    return '匿名用户'
   })
   // 用户头像（如果没有则使用默认头像）
   const avatarUrl = computed(() => {
-    return user.value?.avatar || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
+    const avatar = user.value?.avatar
+    // 检查是否为空字符串、null 或 undefined
+    if (!avatar || avatar.trim() === '') {
+      return 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
+    }
+    // 如果是相对路径（以 / 开头），转换为完整的 URL
+    if (avatar.startsWith('/')) {
+      return `${config.apiBaseUrl}${avatar}`
+    }
+    // 如果已经是完整 URL，直接返回
+    return avatar
   })
 
   // ==================== Actions ====================
@@ -47,7 +64,8 @@ export const useUserStore = defineStore('user', () => {
       isLoading.value = true
       error.value = ''
       const response = await userApi.getUserInfo()
-      user.value = response
+      // 后端返回格式: { user: { ... } }
+      user.value = response.user || response
     } catch (err: any) {
       error.value = err.response?.data?.error || '获取用户信息失败'
       console.error('获取用户信息错误:', err)
@@ -61,13 +79,17 @@ export const useUserStore = defineStore('user', () => {
   }
 
   // 更新用户信息
-  async function updateUserInfo(data: { nickname?: string; avatar?: string }) {
+  async function updateUserInfo(data: { nickname?: string; bio?: string; avatar?: string }) {
     try {
       isLoading.value = true
       error.value = ''
 
       if (data.nickname) {
         await userApi.updateNickname({ nickname: data.nickname })
+      }
+
+      if (data.bio) {
+        await userApi.updateBio({ bio: data.bio })
       }
 
       // 更新本地状态

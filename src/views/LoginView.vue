@@ -3,8 +3,10 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { authApi } from '../services/userApi'
 import { tokenManager } from '../utils/auth'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const loginForm = ref({
   email: '',
@@ -47,6 +49,10 @@ const handleLogin = async () => {
       localStorage.setItem('refresh_token', response.tokens.refresh_token)
       console.log('Token已保存:', response.tokens.access_token.substring(0, 20) + '...')
     }
+    
+    // 获取用户信息
+    await userStore.fetchUserInfo()
+    console.log('用户信息已获取:', userStore.user)
     
     success.value = '登录成功'
     setTimeout(() => {

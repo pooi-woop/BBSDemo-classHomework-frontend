@@ -13,7 +13,7 @@ const router = useRouter()
     <main class="hero-section">
       <div class="hero-content">
         <h1>bbsDemo</h1>
-        <p>探索论坛世界，分享你的热爱</p>
+        <p>你所热爱的,就是你的生活</p>
         <el-button type="primary" size="large" @click="router.push('/forum')">
           进入论坛
         </el-button>

@@ -18,17 +18,21 @@ const commentContent = ref('')
 
 // 获取帖子详情
 const fetchPostDetail = async () => {
+  console.log('fetchPostDetail 被调用，postId:', postId.value)
   try {
     isLoading.value = true
     error.value = ''
     
+    console.log('开始获取帖子详情...')
     const response = await postApi.getPostDetail(postId.value)
     console.log('获取帖子详情响应:', response)
     // 后端返回格式: { post: { id: ..., title: ..., ... } }
     post.value = response.post || response
   } catch (err: any) {
+    console.error('获取帖子详情错误:', err)
+    console.error('错误状态码:', err.response?.status)
+    console.error('错误数据:', err.response?.data)
     error.value = err.response?.data?.error || '获取帖子详情失败'
-    console.error('获取帖子详情错误', err)
   } finally {
     isLoading.value = false
   }

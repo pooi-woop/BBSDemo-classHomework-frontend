@@ -230,6 +230,7 @@ Authorization: Bearer <access_token>
     "id": 1234567890123456789,
     "email": "user@example.com",
     "nickname": "User",
+    "bio": "",
     "avatar": "/uploads/avatar_1234567890123456789_1234567890.jpg",
     "status": 1,
     "is_admin": false,
@@ -326,6 +327,47 @@ avatar: <file>
 2. 文件过大：上传 10MB 的图片
 3. 无效类型：上传 pdf 文件
 
+### 2.4 更新简介
+
+**请求：**
+```http
+PUT /api/profile/bio
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+  "bio": "This is my bio"
+}
+```
+
+**响应：**
+```json
+{
+  "user": {
+    "id": 1234567890123456789,
+    "email": "user@example.com",
+    "nickname": "User",
+    "bio": "This is my bio",
+    "avatar": "",
+    "status": 1,
+    "is_admin": false,
+    "is_verified": true
+  }
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 400 | `{"error": "bio must be at most 500 characters"}` | 简介过长 |
+| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 404 | `{"error": "User not found"}` | 用户不存在 |
+| 500 | `{"error": "Failed to update bio"}` | 更新失败 |
+
+**测试用例：**
+1. 正常更新：`{"bio": "This is my bio"}`
+2. 简介过长：`{"bio": "a very long bio that exceeds the maximum length of 500 characters and should be rejected by the server. This is just a test to see if the validation works correctly. The bio should not be longer than 500 characters. Let's see if this is enough to trigger the error."}`
+
 ## 3. 帖子接口
 
 ### 3.1 获取帖子列表
@@ -372,7 +414,54 @@ GET /api/posts?page=1&page_size=10
 1. 正常获取：`GET /api/posts?page=1&page_size=10`
 2. 分页获取：`GET /api/posts?page=2&page_size=5`
 
-### 3.2 获取帖子详情
+### 3.2 搜索帖子
+
+**请求：**
+```http
+GET /api/posts/search?keyword=Hello&page=1&page_size=10
+```
+
+**响应：**
+```json
+{
+  "posts": [
+    {
+      "id": 1234567890123456789,
+      "user_id": 1234567890123456789,
+      "title": "Hello World",
+      "content": "This is a test post",
+      "views": 10,
+      "like_count": 5,
+      "comment_count": 3,
+      "created_at": "2023-01-01T00:00:00Z",
+      "updated_at": "2023-01-01T00:00:00Z",
+      "user": {
+        "id": 1234567890123456789,
+        "email": "user@example.com",
+        "nickname": "User",
+        "avatar": ""
+      }
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "page_size": 10,
+  "keyword": "Hello"
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 400 | `{"error": "keyword is required"}` | 关键词不能为空 |
+| 500 | `{"error": "Failed to search posts"}` | 搜索失败 |
+
+**测试用例：**
+1. 正常搜索：`GET /api/posts/search?keyword=Hello&page=1&page_size=10`
+2. 空关键词：`GET /api/posts/search?keyword=`
+3. 无结果搜索：`GET /api/posts/search?keyword=不存在的关键词`
+
+### 3.3 获取帖子详情
 
 **请求：**
 ```http
@@ -412,7 +501,7 @@ GET /api/posts/1234567890123456789
 1. 正常获取：`GET /api/posts/1`
 2. 不存在的帖子：`GET /api/posts/999`
 
-### 3.3 创建帖子
+### 3.4 创建帖子
 
 **请求：**
 ```http
@@ -457,7 +546,7 @@ Authorization: Bearer <access_token>
 2. 标题过长：`{"title": "a very long title that exceeds the maximum length of 200 characters and should be rejected by the server", "content": "content"}`
 3. 空内容：`{"title": "Title", "content": ""}`
 
-### 3.4 更新帖子
+### 3.5 更新帖子
 
 **请求：**
 ```http
@@ -502,7 +591,7 @@ Authorization: Bearer <access_token>
 2. 无权更新：使用其他用户的 token 更新帖子
 3. 不存在的帖子：`PUT /api/posts/999`
 
-### 3.5 删除帖子
+### 3.6 删除帖子
 
 **请求：**
 ```http

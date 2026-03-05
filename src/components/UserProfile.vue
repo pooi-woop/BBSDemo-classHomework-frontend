@@ -6,31 +6,67 @@ import { useUserStore } from '@/stores/user'
 const userStore = useUserStore()
 
 // 编辑状态
-const isEditing = ref(false)
+const isEditingNickname = ref(false)
+const isEditingBio = ref(false)
 const editNickname = ref('')
+const editBio = ref('')
 
 // 头像上传 input 引用
 const avatarInputRef = ref<HTMLInputElement | null>(null)
 
-// 开始编辑
-const startEdit = () => {
-  editNickname.value = userStore.user?.nickname || ''
-  isEditing.value = true
+// 格式化日期
+const formatDate = (dateString: string | undefined) => {
+  if (!dateString) return '未知'
+  const date = new Date(dateString)
+  if (isNaN(date.getTime())) return '未知'
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
 }
 
-// 保存编辑
-const saveEdit = async () => {
+// 开始编辑昵称
+const startEditNickname = () => {
+  editNickname.value = userStore.user?.nickname || ''
+  isEditingNickname.value = true
+}
+
+// 保存昵称
+const saveNickname = async () => {
   if (editNickname.value.trim()) {
     const success = await userStore.updateUserInfo({ nickname: editNickname.value })
     if (success) {
-      isEditing.value = false
+      isEditingNickname.value = false
     }
   }
 }
 
-// 取消编辑
-const cancelEdit = () => {
-  isEditing.value = false
+// 取消编辑昵称
+const cancelEditNickname = () => {
+  isEditingNickname.value = false
+}
+
+// 开始编辑简介
+const startEditBio = () => {
+  editBio.value = userStore.user?.bio || ''
+  isEditingBio.value = true
+}
+
+// 保存简介
+const saveBio = async () => {
+  const success = await userStore.updateUserInfo({ bio: editBio.value })
+  if (success) {
+    isEditingBio.value = false
+  }
+}
+
+// 取消编辑简介
+const cancelEditBio = () => {
+  isEditingBio.value = false
 }
 
 // 处理头像上传
@@ -56,11 +92,6 @@ onMounted(() => {
 
 <template>
   <div class="user-profile">
-    <!-- 调试信息 -->
-    <div style="background: #f0f0f0; padding: 10px; margin-bottom: 10px; font-size: 12px;">
-      isLoading: {{ userStore.isLoading }}, isLoggedIn: {{ userStore.isLoggedIn }}, user: {{ !!userStore.user }}
-    </div>
-
     <!-- 加载状态 -->
     <div v-if="userStore.isLoading" class="loading">
       <el-skeleton :rows="3" animated />
@@ -97,16 +128,16 @@ onMounted(() => {
         <!-- 昵称 -->
         <div class="info-item">
           <span class="label">昵称：</span>
-          <div v-if="!isEditing" class="value">
+          <div v-if="!isEditingNickname" class="value">
             {{ userStore.displayName }}
-            <el-button type="primary" link size="small" @click="startEdit">
+            <el-button type="primary" link size="small" @click="startEditNickname">
               编辑
             </el-button>
           </div>
           <div v-else class="edit-form">
             <el-input v-model="editNickname" size="small" style="width: 200px" />
-            <el-button type="primary" size="small" @click="saveEdit">保存</el-button>
-            <el-button size="small" @click="cancelEdit">取消</el-button>
+            <el-button type="primary" size="small" @click="saveNickname">保存</el-button>
+            <el-button size="small" @click="cancelEditNickname">取消</el-button>
           </div>
         </div>
 
@@ -116,11 +147,37 @@ onMounted(() => {
           <span class="value">{{ userStore.user?.email }}</span>
         </div>
 
+        <!-- 简介 -->
+        <div class="info-item">
+          <span class="label">简介：</span>
+          <div v-if="!isEditingBio" class="value">
+            {{ userStore.user?.bio || '暂无简介' }}
+            <el-button type="primary" link size="small" @click="startEditBio">
+              编辑
+            </el-button>
+          </div>
+          <div v-else class="edit-form">
+            <el-input
+              v-model="editBio"
+              type="textarea"
+              :rows="3"
+              size="small"
+              style="width: 300px"
+              maxlength="500"
+              show-word-limit
+            />
+            <div class="edit-buttons">
+              <el-button type="primary" size="small" @click="saveBio">保存</el-button>
+              <el-button size="small" @click="cancelEditBio">取消</el-button>
+            </div>
+          </div>
+        </div>
+
         <!-- 注册时间 -->
         <div class="info-item">
           <span class="label">注册时间：</span>
           <span class="value">
-            {{ new Date(userStore.user?.created_at || '').toLocaleString() }}
+            {{ formatDate(userStore.user?.created_at) }}
           </span>
         </div>
       </div>
@@ -205,6 +262,12 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.edit-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 .actions {

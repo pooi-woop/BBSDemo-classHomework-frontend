@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import { postApi } from '../services/userApi'
 
 const router = useRouter()
 
@@ -20,31 +20,18 @@ const fetchPosts = async () => {
     
     console.log('开始获取帖子列表...', 'page:', currentPage.value, 'page_size:', pageSize.value)
     
-    // 使用 Vite 代理调用后端
-    const response = await axios.get('/api/posts', {
-      params: {
-        page: currentPage.value,
-        page_size: pageSize.value
-      },
-      timeout: 5000
+    const response = await postApi.getPosts({
+      page: currentPage.value,
+      page_size: pageSize.value
     })
-    
-    console.log('获取帖子列表响应:', response.data)
-    
+    console.log('获取帖子列表响应:', response)
     // 后端返回格式: { posts: [...], total: ... }
-    const data = response.data
-    posts.value = data.posts || []
-    total.value = data.total || 0
-    
-    console.log('帖子数量:', posts.value.length)
-    if (posts.value.length > 0) {
-      console.log('第一个帖子:', posts.value[0])
-    }
+    posts.value = response.posts || response.data || []
+    total.value = response.total || 0
   } catch (err: any) {
     console.error('获取帖子列表错误:', err)
-    error.value = err.response?.data?.error || err.message || '获取帖子列表失败'
+    error.value = err.response?.data?.error || '获取帖子列表失败'
   } finally {
-    console.log('fetchPosts 完成，isLoading 设为 false')
     isLoading.value = false
   }
 }
@@ -140,8 +127,8 @@ onMounted(() => {
     <!-- 错误提示 -->
     <el-alert v-if="error" :title="error" type="error" show-icon closable style="margin-top: 1rem" />
 
-    <!-- 分页 -->
-    <div v-if="total > 0" class="pagination">
+    <!-- 分页 - 固定在底部 -->
+    <div v-if="total > 0" class="pagination-fixed">
       <el-pagination
         v-model:current-page="currentPage"
         v-model:page-size="pageSize"
@@ -152,14 +139,17 @@ onMounted(() => {
         @current-change="handlePageChange"
       />
     </div>
+    
+    <!-- 底部占位，防止内容被分页遮挡 -->
+    <div v-if="total > 0" class="pagination-placeholder"></div>
   </div>
 </template>
 
 <style scoped>
 .forum-container {
   width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   padding: 2rem;
   box-sizing: border-box;
 }
@@ -169,6 +159,7 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+  padding: 0 1rem;
 }
 
 .forum-header h1 {
@@ -178,10 +169,22 @@ onMounted(() => {
   margin: 0;
 }
 
-.pagination {
-  margin-top: 2rem;
+.pagination-fixed {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   justify-content: center;
+  align-items: center;
+  background: #fff;
+  padding: 1rem;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+}
+
+.pagination-placeholder {
+  height: 60px;
 }
 
 @media (max-width: 768px) {
@@ -192,7 +195,7 @@ onMounted(() => {
   .forum-header {
     flex-direction: column;
     gap: 1rem;
-    align-items: stretch;
+    padding: 0;
   }
 }
 </style>
