@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
-import VueCropper from 'vue-cropper'
-import 'vue-cropper/dist/vue-cropper.css'
+// 移除 vue-cropper 导入，改用原生实现
 
 // 使用 Pinia Store
 const userStore = useUserStore()
@@ -18,16 +17,15 @@ const avatarInputRef = ref<HTMLInputElement | null>(null)
 
 // 头像裁剪相关
 const showCropper = ref(false)
-const cropperRef = ref<InstanceType<typeof VueCropper> | null>(null)
+const cropperCanvas = ref<HTMLCanvasElement | null>(null)
 const cropperImage = ref('')
-const cropperOptions = ref({
-  viewMode: 1,
-  aspectRatio: 1,
-  autoCropArea: 0.8,
-  dragMode: 'move',
-  cropBoxMovable: true,
-  cropBoxResizable: true
-})
+const cropperScale = ref(1)
+const cropperPosition = ref({ x: 0, y: 0 })
+const cropBox = ref({ x: 100, y: 100, width: 200, height: 200 })
+const isDragging = ref(false)
+const dragStart = ref({ x: 0, y: 0 })
+const dragType = ref<'move' | 'resize' | null>(null)
+const resizeHandle = ref<number | null>(null)
 
 // 格式化日期
 const formatDate = (dateString: string | undefined) => {
@@ -92,23 +90,260 @@ const handleAvatarChange = (event: Event) => {
     reader.onload = (e) => {
       cropperImage.value = e.target?.result as string
       showCropper.value = true
+      // 延迟初始化 canvas，确保 DOM 已渲染
+      setTimeout(initCropper, 100)
     }
     reader.readAsDataURL(input.files[0])
   }
 }
 
+// 初始化裁剪器
+const initCropper = () => {
+  if (!cropperCanvas.value) return
+  
+  const canvas = cropperCanvas.value
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  
+  // 清空画布
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  
+  // 加载图片
+  const img = new Image()
+  img.onload = () => {
+    // 计算缩放比例，让图片完全填满画布
+    const scale = Math.max(canvas.width / img.width, canvas.height / img.height)
+    const scaledWidth = img.width * scale
+    const scaledHeight = img.height * scale
+    
+    // 居中显示
+    const x = (canvas.width - scaledWidth) / 2
+    const y = (canvas.height - scaledHeight) / 2
+    
+    cropperPosition.value = { x, y }
+    cropperScale.value = scale
+    
+    // 绘制图片
+    ctx.drawImage(img, x, y, scaledWidth, scaledHeight)
+    
+    // 绘制裁剪框
+    drawCropBox(ctx)
+  }
+  img.src = cropperImage.value
+}
+
+// 绘制裁剪框
+const drawCropBox = (ctx: CanvasRenderingContext2D) => {
+  const { x, y, width, height } = cropBox.value
+  
+  // 保存当前状态
+  ctx.save()
+  
+  // 创建裁剪路径
+  ctx.beginPath()
+  ctx.rect(x, y, width, height)
+  ctx.clip()
+  
+  // 恢复状态
+  ctx.restore()
+  
+  // 绘制半透明遮罩（使用两个矩形实现）
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'
+  
+  // 顶部遮罩
+  ctx.fillRect(0, 0, ctx.canvas.width, y)
+  // 左侧遮罩
+  ctx.fillRect(0, y, x, height)
+  // 右侧遮罩
+  ctx.fillRect(x + width, y, ctx.canvas.width - (x + width), height)
+  // 底部遮罩
+  ctx.fillRect(0, y + height, ctx.canvas.width, ctx.canvas.height - (y + height))
+  
+  // 绘制裁剪框边框
+  ctx.strokeStyle = '#409EFF'
+  ctx.lineWidth = 2
+  ctx.strokeRect(x, y, width, height)
+  
+  // 绘制调整手柄
+  const handleSize = 8
+  for (let i = 0; i < 4; i++) {
+    const hx = x + (i % 2) * width
+    const hy = y + Math.floor(i / 2) * height
+    ctx.fillStyle = '#409EFF'
+    ctx.fillRect(hx - handleSize/2, hy - handleSize/2, handleSize, handleSize)
+  }
+}
+
+// 处理鼠标按下
+const handleMouseDown = (e: MouseEvent) => {
+  const canvas = cropperCanvas.value
+  if (!canvas) return
+  
+  const rect = canvas.getBoundingClientRect()
+  const x = e.clientX - rect.left
+  const y = e.clientY - rect.top
+  
+  // 检查是否点击了调整手柄
+  const { x: cx, y: cy, width, height } = cropBox.value
+  const handleSize = 10
+  
+  for (let i = 0; i < 4; i++) {
+    const hx = cx + (i % 2) * width
+    const hy = cy + Math.floor(i / 2) * height
+    if (Math.abs(x - hx) <= handleSize && Math.abs(y - hy) <= handleSize) {
+      isDragging.value = true
+      dragType.value = 'resize'
+      resizeHandle.value = i
+      dragStart.value = { x, y }
+      return
+    }
+  }
+  
+  // 检查是否点击了裁剪框内部
+  if (x >= cx && x <= cx + width && y >= cy && y <= cy + height) {
+    isDragging.value = true
+    dragType.value = 'move'
+    dragStart.value = { x, y }
+  }
+}
+
+// 处理鼠标移动
+const handleMouseMove = (e: MouseEvent) => {
+  if (!isDragging.value) return
+  
+  const canvas = cropperCanvas.value
+  if (!canvas) return
+  
+  const rect = canvas.getBoundingClientRect()
+  const x = e.clientX - rect.left
+  const y = e.clientY - rect.top
+  
+  const dx = x - dragStart.value.x
+  const dy = y - dragStart.value.y
+  
+  if (dragType.value === 'move') {
+    // 移动裁剪框
+    cropBox.value = {
+      ...cropBox.value,
+      x: Math.max(0, Math.min(cropBox.value.x + dx, canvas.width - cropBox.value.width)),
+      y: Math.max(0, Math.min(cropBox.value.y + dy, canvas.height - cropBox.value.height))
+    }
+  } else if (dragType.value === 'resize' && resizeHandle.value !== null) {
+    // 调整裁剪框大小
+    const { x: cx, y: cy, width, height } = cropBox.value
+    const minSize = 50
+    
+    if (resizeHandle.value === 0) { // 左上角
+      const newWidth = Math.max(minSize, width - dx)
+      const newHeight = Math.max(minSize, height - dy)
+      cropBox.value = {
+        x: cx + dx,
+        y: cy + dy,
+        width: newWidth,
+        height: newHeight
+      }
+    } else if (resizeHandle.value === 1) { // 右上角
+      const newWidth = Math.max(minSize, width + dx)
+      const newHeight = Math.max(minSize, height - dy)
+      cropBox.value = {
+        x: cx,
+        y: cy + dy,
+        width: newWidth,
+        height: newHeight
+      }
+    } else if (resizeHandle.value === 2) { // 左下角
+      const newWidth = Math.max(minSize, width - dx)
+      const newHeight = Math.max(minSize, height + dy)
+      cropBox.value = {
+        x: cx + dx,
+        y: cy,
+        width: newWidth,
+        height: newHeight
+      }
+    } else if (resizeHandle.value === 3) { // 右下角
+      const newWidth = Math.max(minSize, width + dx)
+      const newHeight = Math.max(minSize, height + dy)
+      cropBox.value = {
+        x: cx,
+        y: cy,
+        width: newWidth,
+        height: newHeight
+      }
+    }
+  }
+  
+  dragStart.value = { x, y }
+  
+  // 重绘
+  const ctx = canvas.getContext('2d')
+  if (ctx) {
+    const img = new Image()
+    img.onload = () => {
+      const { x: px, y: py } = cropperPosition.value
+      const scaledWidth = img.width * cropperScale.value
+      const scaledHeight = img.height * cropperScale.value
+      
+      // 清空画布
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      
+      // 绘制图片
+      ctx.drawImage(img, px, py, scaledWidth, scaledHeight)
+      
+      // 绘制裁剪框和遮罩
+      drawCropBox(ctx)
+    }
+    img.src = cropperImage.value
+  }
+}
+
+// 处理鼠标释放
+const handleMouseUp = () => {
+  isDragging.value = false
+  dragType.value = null
+  resizeHandle.value = null
+}
+
 // 确认裁剪
 const confirmCrop = async () => {
-  if (cropperRef.value) {
-    cropperRef.value.getCropData(async (dataURL: string) => {
-      // 将 base64 转换为 Blob
-      const blob = dataURLToBlob(dataURL)
+  const canvas = cropperCanvas.value
+  if (!canvas) return
+  
+  // 创建临时 canvas 用于裁剪
+  const tempCanvas = document.createElement('canvas')
+  tempCanvas.width = cropBox.value.width
+  tempCanvas.height = cropBox.value.height
+  
+  const ctx = tempCanvas.getContext('2d')
+  if (!ctx) return
+  
+  // 加载原图
+  const img = new Image()
+  img.onload = async () => {
+    // 计算实际裁剪位置和大小
+    const { x, y, width, height } = cropBox.value
+    const { x: px, y: py } = cropperPosition.value
+    
+    // 绘制裁剪区域
+    ctx.drawImage(
+      img,
+      (x - px) / cropperScale.value,
+      (y - py) / cropperScale.value,
+      width / cropperScale.value,
+      height / cropperScale.value,
+      0, 0, width, height
+    )
+    
+    // 转换为 Blob
+    tempCanvas.toBlob(async (blob) => {
       if (blob) {
-        await userStore.uploadUserAvatar(blob)
+        // 将 Blob 转换为 File 对象，添加文件名和类型信息
+        const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
+        await userStore.uploadUserAvatar(file)
         showCropper.value = false
       }
-    })
+    }, 'image/jpeg', 0.9)
   }
+  img.src = cropperImage.value
 }
 
 // 取消裁剪
@@ -233,6 +468,32 @@ onMounted(() => {
             {{ formatDate(userStore.user?.created_at) }}
           </span>
         </div>
+
+        <!-- 用户 ID -->
+        <div class="info-item">
+          <span class="label">用户 ID：</span>
+          <span class="value">{{ userStore.user?.id }}</span>
+        </div>
+
+        <!-- 账号状态 -->
+        <div class="info-item">
+          <span class="label">账号状态：</span>
+          <span class="value">
+            {{ userStore.user?.status === 1 ? '正常' : userStore.user?.status === 0 ? '禁用' : '未知' }}
+          </span>
+        </div>
+
+        <!-- 管理员权限 -->
+        <div class="info-item">
+          <span class="label">管理员权限：</span>
+          <span class="value">{{ userStore.user?.is_admin ? '是' : '否' }}</span>
+        </div>
+
+        <!-- 邮箱验证 -->
+        <div class="info-item">
+          <span class="label">邮箱验证：</span>
+          <span class="value">{{ userStore.user?.is_verified ? '已验证' : '未验证' }}</span>
+        </div>
       </div>
 
       <!-- 操作按钮 -->
@@ -258,11 +519,15 @@ onMounted(() => {
       width="600px"
     >
       <div class="cropper-container">
-        <vue-cropper
-          ref="cropperRef"
-          :img="cropperImage"
-          :options="cropperOptions"
-          style="width: 100%; height: 400px"
+        <canvas
+          ref="cropperCanvas"
+          width="500"
+          height="400"
+          @mousedown="handleMouseDown"
+          @mousemove="handleMouseMove"
+          @mouseup="handleMouseUp"
+          @mouseleave="handleMouseUp"
+          style="border: 1px solid #ddd; cursor: crosshair"
         />
       </div>
       <template #footer>
