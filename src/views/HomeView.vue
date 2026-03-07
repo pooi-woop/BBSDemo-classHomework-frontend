@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import AdCarousel from '../components/AdCarousel.vue'
 
 const router = useRouter()
 </script>
@@ -8,15 +9,21 @@ const router = useRouter()
   <div class="home-container">
     <!-- 背景图片 -->
     <div class="bg-image"></div>
-    
+
     <!-- 主要内容 -->
-    <main class="hero-section">
-      <div class="hero-content">
-        <h1>bbsDemo</h1>
-        <p>你所热爱的,就是你的生活</p>
-        <el-button type="primary" size="large" @click="router.push('/forum')">
-          进入论坛
-        </el-button>
+    <main class="main-content">
+      <!-- 广告轮播 -->
+      <AdCarousel />
+
+      <!-- Hero 区域 -->
+      <div class="hero-section">
+        <div class="hero-content">
+          <h1>bbsDemo</h1>
+          <p>你所热爱的,就是你的生活</p>
+          <el-button type="primary" size="large" @click="router.push('/forum')">
+            进入论坛
+          </el-button>
+        </div>
       </div>
     </main>
   </div>
@@ -30,7 +37,7 @@ const router = useRouter()
 }
 
 .bg-image {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   width: 100%;
@@ -43,14 +50,20 @@ const router = useRouter()
   filter: brightness(0.6);
 }
 
+.main-content {
+  position: relative;
+  z-index: 1;
+  padding: 2rem;
+}
+
 .hero-section {
   position: relative;
-  min-height: 100vh;
+  min-height: 60vh;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 0 1rem;
+  padding: 2rem 1rem;
 }
 
 .hero-content {
