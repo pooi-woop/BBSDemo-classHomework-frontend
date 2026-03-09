@@ -155,6 +155,39 @@ export const commentApi = {
   }
 }
 
+// 管理员相关 API
+export const adminApi = {
+  // 管理员删除帖子
+  deletePost: (postId: string): Promise<any> => {
+    return api.delete(`/admin/posts/${postId}`)
+  },
+  
+  // 管理员删除评论
+  deleteComment: (commentId: string): Promise<any> => {
+    return api.delete(`/admin/comments/${commentId}`)
+  },
+  
+  // 查看所有评论
+  getComments: (params: { page: number; page_size: number }): Promise<any> => {
+    return api.get('/admin/comments', { params })
+  },
+  
+  // 禁言用户
+  banUser: (userId: string): Promise<any> => {
+    return api.put(`/admin/users/${userId}/ban`)
+  },
+  
+  // 解除禁言
+  unbanUser: (userId: string): Promise<any> => {
+    return api.put(`/admin/users/${userId}/unban`)
+  },
+  
+  // 查看所有用户
+  getUsers: (params: { page: number; page_size: number; keyword?: string }): Promise<any> => {
+    return api.get('/admin/users', { params })
+  }
+}
+
 // 点赞相关 API
 export const likeApi = {
   // 点赞帖子

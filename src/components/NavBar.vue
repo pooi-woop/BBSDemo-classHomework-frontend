@@ -2,8 +2,9 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { User, SwitchButton, Search } from '@element-plus/icons-vue'
+import { User, SwitchButton, Search, Refresh, Setting } from '@element-plus/icons-vue'
 import { tokenManager } from '@/utils/auth'
+import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const route = useRoute()
@@ -15,6 +16,7 @@ const searchKeyword = ref('')
 
 // 直接使用 store 的计算属性
 const isLoggedIn = computed(() => userStore.isLoggedIn)
+const isAdmin = computed(() => userStore.user?.is_admin || false)
 
 // 组件挂载时初始化
 onMounted(async () => {
@@ -54,7 +56,30 @@ const handleSelect = (path: string) => {
     handleLogout()
     return
   }
+  if (path === 'logout-all') {
+    handleLogoutAll()
+    return
+  }
+  if (path === 'admin') {
+    goToAdmin()
+    return
+  }
   router.push(path)
+}
+
+// 跳转到管理员界面
+const goToAdmin = () => {
+  if (!isAdmin.value) {
+    ElMessage.warning('功能未对您开放')
+    return
+  }
+  router.push('/admin')
+}
+
+// 处理登出所有设备
+const handleLogoutAll = async () => {
+  await userStore.logoutAll()
+  router.push('/')
 }
 </script>
 
@@ -103,9 +128,17 @@ const handleSelect = (path: string) => {
         <el-icon class="menu-icon"><User /></el-icon>
         个人中心
       </el-menu-item>
+      <el-menu-item index="admin">
+        <el-icon class="menu-icon"><Setting /></el-icon>
+        管理员后台
+      </el-menu-item>
       <el-menu-item index="logout">
         <el-icon class="menu-icon"><SwitchButton /></el-icon>
         退出登录
+      </el-menu-item>
+      <el-menu-item index="logout-all">
+        <el-icon class="menu-icon"><Refresh /></el-icon>
+        登出所有设备
       </el-menu-item>
     </el-sub-menu>
 

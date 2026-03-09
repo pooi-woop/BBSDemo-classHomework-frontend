@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { userApi, postApi, commentApi } from '../services/userApi'
+import { userApi, postApi, commentApi, adminApi } from '../services/userApi'
 import { tokenManager } from '../utils/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -17,6 +17,7 @@ const total = ref(0)
 const isLoading = ref(false)
 const error = ref('')
 const activeTab = ref('users')
+const searchKeyword = ref('')
 
 // 页面加载时检查登录状态和管理员权限
 onMounted(async () => {
@@ -48,12 +49,19 @@ const fetchUsers = async () => {
     isLoading.value = true
     error.value = ''
     
-    const response = await userApi.getUsers({
+    const params: any = {
       page: currentPage.value,
       page_size: pageSize.value
-    })
+    }
     
-    users.value = response.data || response || []
+    // 如果有搜索关键词，添加到参数中
+    if (searchKeyword.value.trim()) {
+      params.keyword = searchKeyword.value.trim()
+    }
+    
+    const response = await adminApi.getUsers(params)
+    
+    users.value = response.users || response.data || response || []
     total.value = response.total || 0
   } catch (err: any) {
     console.error('获取用户列表错误:', err)
@@ -61,6 +69,12 @@ const fetchUsers = async () => {
   } finally {
     isLoading.value = false
   }
+}
+
+// 处理用户搜索
+const handleUserSearch = () => {
+  currentPage.value = 1
+  fetchUsers()
 }
 
 // 获取帖子列表
@@ -90,12 +104,12 @@ const fetchComments = async () => {
     isLoading.value = true
     error.value = ''
     
-    const response = await commentApi.getComments('all', {
+    const response = await adminApi.getComments({
       page: currentPage.value,
       page_size: pageSize.value
     })
     
-    comments.value = response.data || response || []
+    comments.value = response.comments || response.data || response || []
     total.value = response.total || 0
   } catch (err: any) {
     console.error('获取评论列表错误:', err)
@@ -158,23 +172,46 @@ const viewUserProfile = (userId: string) => {
   ElMessage.info('用户资料页面开发中')
 }
 
-// 删除用户
-const deleteUser = (userId: string, userName: string) => {
-  ElMessageBox.confirm(`确定要删除用户 "${userName}" 吗？此操作不可撤销！`, {
+// 禁言用户
+const banUser = (userId: string, userName: string) => {
+  ElMessageBox.confirm(`确定要禁言用户 "${userName}" 吗？`, {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'error',
+    type: 'warning',
     title: '警告'
   }).then(async () => {
     try {
       isLoading.value = true
-      // 这里需要实现删除用户的API调用
-      // await userApi.deleteUser(userId)
-      ElMessage.success('用户删除成功')
+      await adminApi.banUser(userId)
+      ElMessage.success('用户禁言成功')
       await fetchUsers()
     } catch (err: any) {
-      console.error('删除用户错误:', err)
-      ElMessage.error(err.response?.error || '删除用户失败')
+      console.error('禁言用户错误:', err)
+      ElMessage.error(err.response?.error || '禁言用户失败')
+    } finally {
+      isLoading.value = false
+    }
+  }).catch(() => {
+    // 取消操作
+  })
+}
+
+// 解除禁言
+const unbanUser = (userId: string, userName: string) => {
+  ElMessageBox.confirm(`确定要解除禁言用户 "${userName}" 吗？`, {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'success',
+    title: '确认'
+  }).then(async () => {
+    try {
+      isLoading.value = true
+      await adminApi.unbanUser(userId)
+      ElMessage.success('解除禁言成功')
+      await fetchUsers()
+    } catch (err: any) {
+      console.error('解除禁言错误:', err)
+      ElMessage.error(err.response?.error || '解除禁言失败')
     } finally {
       isLoading.value = false
     }
@@ -193,7 +230,7 @@ const deletePost = (postId: string, postTitle: string) => {
   }).then(async () => {
     try {
       isLoading.value = true
-      await postApi.deletePost(stringPostId)
+      await adminApi.deletePost(stringPostId)
       ElMessage.success('帖子删除成功')
       await fetchPosts()
     } catch (err: any) {
@@ -217,7 +254,7 @@ const deleteComment = (commentId: string) => {
   }).then(async () => {
     try {
       isLoading.value = true
-      await commentApi.deleteComment(stringCommentId)
+      await adminApi.deleteComment(stringCommentId)
       ElMessage.success('评论删除成功')
       await fetchComments()
     } catch (err: any) {
@@ -255,6 +292,22 @@ const viewPostDetail = (postId: string) => {
     <!-- 标签页 -->
     <el-tabs v-model="activeTab" @tab-click="(tab: any) => handleTabChange(tab.paneName)">
       <el-tab-pane label="用户管理" name="users">
+        <!-- 搜索框 -->
+        <div class="search-container" style="margin-bottom: 1rem">
+          <el-input
+            v-model="searchKeyword"
+            placeholder="搜索用户..."
+            clearable
+            @keyup.enter="handleUserSearch"
+            style="width: 300px"
+          >
+            <template #append>
+              <el-button @click="handleUserSearch">
+                搜索
+              </el-button>
+            </template>
+          </el-input>
+        </div>
         <!-- 用户列表 -->
         <el-table
           v-loading="isLoading"
@@ -298,11 +351,20 @@ const viewPostDetail = (postId: string) => {
                 查看
               </el-button>
               <el-button 
-                type="danger" 
+                v-if="row.status === 1"
+                type="warning" 
                 size="small" 
-                @click="deleteUser(row.id, getUserName(row))"
+                @click="banUser(row.id, getUserName(row))"
               >
-                删除
+                禁言
+              </el-button>
+              <el-button 
+                v-else
+                type="success" 
+                size="small" 
+                @click="unbanUser(row.id, getUserName(row))"
+              >
+                解除禁言
               </el-button>
             </template>
           </el-table-column>

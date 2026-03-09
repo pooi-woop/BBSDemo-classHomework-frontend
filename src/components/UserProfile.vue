@@ -376,6 +376,13 @@ const handleLogout = async () => {
   window.location.href = '/'
 }
 
+// 处理登出所有设备
+const handleLogoutAll = async () => {
+  await userStore.logoutAll()
+  // 刷新页面或跳转到首页
+  window.location.href = '/'
+}
+
 // 处理注销账号
 const deleteAccountForm = ref({
   email: '',
@@ -620,6 +627,7 @@ onMounted(() => {
           管理员后台
         </el-button>
         <el-button type="danger" @click="handleLogout">退出登录</el-button>
+        <el-button type="danger" plain @click="handleLogoutAll">登出所有设备</el-button>
         <el-button type="danger" plain @click="handleDeleteAccount">注销账号</el-button>
       </div>
 

@@ -198,6 +198,20 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  // 登出所有设备
+  async function logoutAll() {
+    try {
+      await authApi.logoutAll()
+    } catch (err) {
+      console.error('登出所有设备错误:', err)
+    } finally {
+      // 清除本地状态
+      user.value = null
+      tokenManager.removeToken()
+      localStorage.removeItem('refresh_token')
+    }
+  }
+
   // 初始化（应用启动时调用）
   async function init() {
     if (tokenManager.isAuthenticated()) {
@@ -223,6 +237,7 @@ export const useUserStore = defineStore('user', () => {
     uploadUserAvatar,
     deleteAccount,
     login,
-    logout
+    logout,
+    logoutAll
   }
 })
