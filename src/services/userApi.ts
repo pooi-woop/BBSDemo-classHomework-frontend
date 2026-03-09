@@ -133,8 +133,13 @@ export const postApi = {
 // 评论相关 API
 export const commentApi = {
   // 获取评论列表
-  getComments: (postId: string, params: { page: number; page_size: number }): Promise<any> => {
-    return api.get(`/posts/${postId}/comments`, { params })
+  getComments: (postId: string, params: { page: number; page_size: number; keyword?: string }): Promise<any> => {
+    if (postId) {
+      return api.get(`/posts/${postId}/comments`, { params })
+    } else {
+      // 新的评论搜索API
+      return api.get('/comments', { params })
+    }
   },
   
   // 获取评论的回复（楼中楼）
@@ -208,6 +213,11 @@ export const likeApi = {
     return api.delete(`/posts/${postId}/like`)
   },
   
+  // 获取帖子点赞状态
+  getLikeStatus: (postId: string): Promise<any> => {
+    return api.get(`/posts/${postId}/like`)
+  },
+  
   // 点赞评论
   likeComment: (commentId: string): Promise<any> => {
     return api.post(`/comments/${commentId}/like`)
@@ -252,6 +262,11 @@ export const favoriteApi = {
     const url = `/posts/${postId}/favorite`
     console.log('请求 URL:', url)
     return api.delete(url)
+  },
+  
+  // 获取帖子收藏状态
+  getFavoriteStatus: (postId: string): Promise<any> => {
+    return api.get(`/posts/${postId}/favorite`)
   },
   
   // 移动收藏

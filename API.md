@@ -578,7 +578,83 @@ GET /api/posts/search?keyword=Hello&page=1&page_size=10
 2. 空关键词：`GET /api/posts/search?keyword=`
 3. 无结果搜索：`GET /api/posts/search?keyword=不存在的关键词`
 
-### 3.3 获取帖子详情
+### 3.3 综合搜索（用户和帖子）
+
+**请求：**
+```http
+GET /api/search?keyword=Hello&page=1&page_size=10
+```
+
+**响应：**
+```json
+{
+  "posts": [
+    {
+      "id": "1234567890123456789",
+      "user_id": "1234567890123456789",
+      "title": "Hello World",
+      "content": "This is a test post",
+      "views": 10,
+      "like_count": 5,
+      "comment_count": 3,
+      "created_at": "2023-01-01T00:00:00Z",
+      "updated_at": "2023-01-01T00:00:00Z",
+      "is_liked": false,
+      "is_favorited": false,
+      "user": {
+        "id": "1234567890123456789",
+        "email": "user@example.com",
+        "nickname": "User",
+        "avatar": ""
+      }
+    }
+  ],
+  "users": [
+    {
+      "id": "1234567890123456789",
+      "email": "user@example.com",
+      "nickname": "HelloUser",
+      "bio": "Hello everyone!",
+      "avatar": "",
+      "status": 1,
+      "is_admin": false,
+      "is_verified": true,
+      "created_at": "2023-01-01T00:00:00Z",
+      "last_login_at": "2023-01-01T00:00:00Z"
+    }
+  ],
+  "total": {
+    "posts": 1,
+    "users": 1
+  },
+  "page": 1,
+  "page_size": 10,
+  "keyword": "Hello"
+}
+```
+
+**参数说明：**
+- `keyword`：搜索关键词（必填）
+- `page`：页码，默认 1
+- `page_size`：每页数量，默认 10
+
+**搜索范围：**
+- **帖子**：标题或内容包含关键词
+- **用户**：昵称或邮箱包含关键词
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 400 | `{"error": "keyword is required"}` | 关键词不能为空 |
+| 500 | `{"error": "Failed to search"}` | 搜索失败 |
+
+**测试用例：**
+1. 正常搜索：`GET /api/search?keyword=Hello&page=1&page_size=10`
+2. 空关键词：`GET /api/search?keyword=`
+3. 只搜索用户：`GET /api/search?keyword=user@example.com`
+4. 分页查询：`GET /api/search?keyword=Hello&page=2&page_size=5`
+
+### 3.4 获取帖子详情
 
 **请求：**
 ```http
@@ -629,12 +705,14 @@ GET /api/posts/1234567890123456789
 **错误返回：**
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
+| 400 | `{"error": "Invalid post ID"}` | 无效的帖子ID |
 | 404 | `{"error": "Post not found"}` | 帖子不存在 |
 | 500 | `{"error": "Failed to get post"}` | 获取失败 |
 
 **测试用例：**
 1. 正常获取：`GET /api/posts/1`
 2. 不存在的帖子：`GET /api/posts/999`
+3. 无效的帖子ID：`GET /api/posts/invalid-id`
 
 ### 3.4 创建帖子
 
@@ -791,12 +869,14 @@ GET /api/posts/1234567890123456789/comments?page=1&page_size=10
 **错误返回：**
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
+| 400 | `{"error": "Invalid post ID"}` | 无效的帖子ID |
 | 404 | `{"error": "Post not found"}` | 帖子不存在 |
 | 500 | `{"error": "Failed to get comments"}` | 获取失败 |
 
 **测试用例：**
 1. 正常获取：`GET /api/posts/1/comments?page=1&page_size=10`
 2. 不存在的帖子：`GET /api/posts/999/comments`
+3. 无效的帖子ID：`GET /api/posts/invalid-id/comments`
 
 ### 4.2 创建评论
 
@@ -868,7 +948,62 @@ Authorization: Bearer <access_token>
 2. 无权删除：使用其他用户的 token 删除评论
 3. 不存在的评论：`DELETE /api/comments/999`
 
-### 4.4 获取回复（楼中楼）
+### 4.4 搜索评论
+
+**请求：**
+```http
+GET /api/comments?keyword=Hello&page=1&page_size=10
+```
+
+**响应：**
+```json
+{
+  "comments": [
+    {
+      "id": "1",
+      "post_id": "1234567890123456789",
+      "user_id": "1234567890123456789",
+      "content": "Hello, great post!",
+      "is_deleted": false,
+      "created_at": "2023-01-01T00:00:00Z",
+      "updated_at": "2023-01-01T00:00:00Z",
+      "user": {
+        "id": "1234567890123456789",
+        "email": "user@example.com",
+        "nickname": "User",
+        "avatar": ""
+      },
+      "post": {
+        "id": "1234567890123456789",
+        "title": "Hello World",
+        "content": "This is a test post"
+      }
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "page_size": 10,
+  "keyword": "Hello"
+}
+```
+
+**参数说明：**
+- `keyword`：搜索关键词（必填），匹配评论内容
+- `page`：页码，默认 1
+- `page_size`：每页数量，默认 10
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 400 | `{"error": "keyword is required"}` | 关键词不能为空 |
+| 500 | `{"error": "Failed to search comments"}` | 搜索失败 |
+
+**测试用例：**
+1. 正常搜索：`GET /api/comments?keyword=Hello&page=1&page_size=10`
+2. 空关键词：`GET /api/comments?keyword=`
+3. 无结果搜索：`GET /api/comments?keyword=不存在的关键词`
+
+### 4.5 获取回复（楼中楼）
 
 **请求：**
 ```http
@@ -967,7 +1102,37 @@ Authorization: Bearer <access_token>
 1. 正常取消：`DELETE /api/posts/1/like`
 2. 未点赞取消：`DELETE /api/posts/1/like`（未点赞时取消）
 
-### 5.3 点赞评论
+### 5.3 查询帖子点赞状态
+
+**请求：**
+```http
+GET /api/posts/1234567890123456789/like
+Authorization: Bearer <access_token>
+```
+
+**响应：**
+```json
+{
+  "post_id": "1234567890123456789",
+  "is_liked": true,
+  "like_count": 10
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 400 | `{"error": "Invalid post ID"}` | 无效的帖子ID |
+| 500 | `{"error": "Failed to get like status"}` | 查询点赞状态失败 |
+| 500 | `{"error": "Failed to get like count"}` | 查询点赞数量失败 |
+
+**测试用例：**
+1. 已点赞查询：`GET /api/posts/1/like`（已点赞的帖子）
+2. 未点赞查询：`GET /api/posts/1/like`（未点赞的帖子）
+3. 不存在的帖子：`GET /api/posts/999/like`
+
+### 5.4 点赞评论
 
 **请求：**
 ```http
@@ -1225,7 +1390,43 @@ Authorization: Bearer <access_token>
 1. 正常取消：`DELETE /api/posts/1/favorite`
 2. 未收藏取消：`DELETE /api/posts/1/favorite`（未收藏时取消）
 
-### 6.7 移动收藏
+### 6.7 查询帖子收藏状态
+
+**请求：**
+```http
+GET /api/posts/1234567890123456789/favorite
+Authorization: Bearer <access_token>
+```
+
+**响应：**
+```json
+{
+  "post_id": "1234567890123456789",
+  "is_favorited": true,
+  "folders": [
+    {
+      "id": 1,
+      "user_id": "1234567890123456789",
+      "name": "我的收藏",
+      "created_at": "2023-01-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 400 | `{"error": "Invalid post ID"}` | 无效的帖子ID |
+| 500 | `{"error": "Failed to get favorite status"}` | 查询失败 |
+
+**测试用例：**
+1. 已收藏查询：`GET /api/posts/1/favorite`（已收藏的帖子）
+2. 未收藏查询：`GET /api/posts/1/favorite`（未收藏的帖子）
+3. 不存在的帖子：`GET /api/posts/999/favorite`
+
+### 6.8 移动收藏
 
 **请求：**
 ```http

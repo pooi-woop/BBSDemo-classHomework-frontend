@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { postApi, commentApi, likeApi, favoriteApi, blockApi } from '../services/userApi'
+import { postApi, commentApi, likeApi, favoriteApi, blockApi, userApi, adminApi } from '../services/userApi'
 import { ElMessage, ElDropdown, ElDropdownMenu, ElDropdownItem, ElCheckboxGroup, ElCheckbox, ElAvatar, ElPopconfirm } from 'element-plus'
 
 const route = useRoute()
@@ -16,6 +16,8 @@ const totalComments = ref(0)
 const isLoading = ref(false)
 const error = ref('')
 const commentContent = ref('')
+
+
 
 // 回复相关状态
 const replyContent = ref('')
@@ -57,10 +59,20 @@ const fetchPostDetail = async () => {
     setTimeout(async () => {
       console.log('延迟重新获取帖子详情以更新浏览量...')
       try {
+        // 确保postId仍然有效
+        if (!postId.value) {
+          console.error('postId无效，无法重新获取帖子详情')
+          return
+        }
+        
         const refreshedResponse = await postApi.getPostDetail(postId.value)
         console.log('重新获取帖子详情响应:', refreshedResponse)
         post.value = refreshedResponse.post || refreshedResponse
         console.log('更新后的浏览量:', post.value.views)
+        // 重新获取点赞、收藏和评论状态，确保数据一致性
+        await fetchLikeStatus()
+        await fetchFavoriteStatus()
+        await fetchComments()
       } catch (err) {
         console.error('重新获取帖子详情失败:', err)
       }
@@ -87,6 +99,13 @@ const getPostViews = () => {
 // 获取评论列表
 const fetchComments = async () => {
   try {
+    // 检查postId是否有效
+    if (!postId.value) {
+      console.error('postId无效:', postId.value)
+      return
+    }
+    
+    console.log('开始获取评论列表，postId:', postId.value)
     const response = await commentApi.getComments(postId.value, {
       page: currentPage.value,
       page_size: pageSize.value
@@ -97,6 +116,9 @@ const fetchComments = async () => {
     let fetchedComments = response.comments || response.data || []
     totalComments.value = response.total || 0
     
+    // 创建新的评论数组，确保每个评论对象都是响应式的
+    const processedComments = []
+    
     // 获取每个评论的楼中楼回复
     for (let comment of fetchedComments) {
       try {
@@ -104,15 +126,25 @@ const fetchComments = async () => {
           page: 1,
           page_size: 10
         })
-        comment.replies = repliesResponse.replies || []
-        console.log(`获取评论 ${comment.id} 的回复:`, comment.replies)
+        // 创建新的评论对象，添加replies属性
+        const processedComment = {
+          ...comment,
+          replies: repliesResponse.replies || []
+        }
+        processedComments.push(processedComment)
+        console.log(`获取评论 ${comment.id} 的回复:`, processedComment.replies)
       } catch (err) {
         console.error(`获取评论 ${comment.id} 的回复失败:`, err)
-        comment.replies = []
+        // 创建新的评论对象，添加空的replies属性
+        const processedComment = {
+          ...comment,
+          replies: []
+        }
+        processedComments.push(processedComment)
       }
     }
     
-    comments.value = fetchedComments
+    comments.value = processedComments
     console.log('解析后的评论列表（含回复）:', comments.value)
   } catch (err: any) {
     console.error('获取评论列表错误', err)
@@ -124,15 +156,15 @@ const handleLikePost = async () => {
   try {
     if (post.value.is_liked) {
       await likeApi.unlikePost(postId.value)
-      post.value.is_liked = false
-      post.value.like_count = Math.max(0, (post.value.like_count || 0) - 1)
     } else {
       await likeApi.likePost(postId.value)
-      post.value.is_liked = true
-      post.value.like_count = (post.value.like_count || 0) + 1
     }
+    // 操作成功后重新获取状态
+    await fetchLikeStatus()
   } catch (err: any) {
     console.error('点赞操作错误', err)
+    // 操作失败后重新获取状态
+    await fetchLikeStatus()
   }
 }
 
@@ -241,37 +273,8 @@ const fetchFolders = async () => {
 
 // 获取帖子已收藏的收藏夹
 const fetchPostFolders = async () => {
-  try {
-    console.log('开始获取帖子已收藏的收藏夹，postId:', postId.value)
-    
-    // 遍历所有收藏夹，检查帖子是否在其中
-    const postFolderIds: string[] = []
-    
-    for (const folder of folders.value) {
-      try {
-        const response = await favoriteApi.getFolderPosts(folder.id, { page: 1, page_size: 100 })
-        const posts = response.data || response || []
-        
-        // 检查帖子是否在当前收藏夹中
-        const isInFolder = posts.some((post: any) => post.id === postId.value || post.post_id === postId.value)
-        
-        if (isInFolder) {
-          postFolderIds.push(folder.id)
-        }
-      } catch (err) {
-        console.error(`获取收藏夹 ${folder.id} 的帖子失败:`, err)
-      }
-    }
-    
-    console.log('帖子已收藏的收藏夹:', postFolderIds)
-    
-    // 设置选中的收藏夹
-    selectedFolders.value = [...postFolderIds]
-    originalFolders.value = [...postFolderIds]
-    
-  } catch (err: any) {
-    console.error('获取帖子已收藏收藏夹错误:', err)
-  }
+  // 直接调用获取收藏状态的接口，因为它包含了帖子所在的收藏夹信息
+  await fetchFavoriteStatus()
 }
 
 // 收藏帖子
@@ -334,6 +337,9 @@ const handleFavorite = async () => {
     // 更新原始收藏夹记录
     originalFolders.value = [...selectedFolders.value]
     
+    // 操作成功后重新获取收藏状态
+    await fetchFavoriteStatus()
+    
   } catch (err: any) {
     console.error('收藏帖子错误:', err)
     console.error('错误详情:', err.response)
@@ -351,8 +357,13 @@ const handleFavorite = async () => {
       errorMsg = err.message
     }
     ElMessage.error(errorMsg)
+    
+    // 操作失败后重新获取状态
+    await fetchFavoriteStatus()
   } finally {
     isFavoriting.value = false
+    // 操作完成后重新获取收藏状态
+    await fetchFavoriteStatus()
   }
 }
 
@@ -413,13 +424,82 @@ const createFolder = async () => {
   }
 }
 
+// 获取点赞状态
+const fetchLikeStatus = async () => {
+  try {
+    console.log('开始获取点赞状态，postId:', postId.value)
+    const response = await likeApi.getLikeStatus(postId.value)
+    console.log('获取点赞状态响应:', response)
+    if (post.value) {
+      post.value.is_liked = response.is_liked || false
+      post.value.like_count = response.like_count || 0
+    }
+  } catch (err: any) {
+    console.error('获取点赞状态错误:', err)
+  }
+}
+
+// 获取收藏状态
+const fetchFavoriteStatus = async () => {
+  try {
+    console.log('开始获取收藏状态，postId:', postId.value)
+    const response = await favoriteApi.getFavoriteStatus(postId.value)
+    console.log('获取收藏状态响应:', response)
+    if (post.value) {
+      post.value.is_favorited = response.is_favorited || false
+    }
+    // 更新收藏夹勾选状态
+    if (response.folders && Array.isArray(response.folders)) {
+      selectedFolders.value = response.folders.map((folder: any) => folder.id.toString())
+      originalFolders.value = [...selectedFolders.value]
+      console.log('更新收藏夹勾选状态:', selectedFolders.value)
+    }
+  } catch (err: any) {
+    console.error('获取收藏状态错误:', err)
+  }
+}
+
+
+
+// 禁言用户
+const handleBanUser = async (userId: string) => {
+  try {
+    await adminApi.banUser(userId)
+    ElMessage.success('用户已被禁言')
+  } catch (err: any) {
+    console.error('禁言用户错误:', err)
+    ElMessage.error(err.response?.error || '禁言失败')
+  }
+}
+
+// 解除禁言
+const handleUnbanUser = async (userId: string) => {
+  try {
+    await adminApi.unbanUser(userId)
+    ElMessage.success('用户已解除禁言')
+  } catch (err: any) {
+    console.error('解除禁言错误:', err)
+    ElMessage.error(err.response?.error || '解除禁言失败')
+  }
+}
+
 // 初始加载
 onMounted(async () => {
   try {
     isLoading.value = true
+    // 确保postId有效
+    if (!postId.value) {
+      console.error('postId无效，无法获取帖子详情')
+      error.value = '帖子ID无效'
+      return
+    }
+    
     await fetchPostDetail()
     await fetchComments()
     await fetchFolders()
+    // 获取点赞和收藏状态
+    await fetchLikeStatus()
+    await fetchFavoriteStatus()
   } finally {
     isLoading.value = false
   }
@@ -455,6 +535,23 @@ onMounted(async () => {
               </el-button>
             </template>
           </el-popconfirm>
+          
+          <!-- 禁言按钮 -->
+          <el-popconfirm
+            v-if="post.user?.id"
+            :title="post.user?.status === 0 ? '确定要解除禁言吗？' : '确定要禁言该用户吗？'"
+            @confirm="post.user?.status === 0 ? handleUnbanUser(post.user.id) : handleBanUser(post.user.id)"
+          >
+            <template #reference>
+              <el-button 
+                :type="post.user?.status === 0 ? 'success' : 'danger'" 
+                size="small"
+                class="ban-button"
+              >
+                {{ post.user?.status === 0 ? '已禁言' : '禁言' }}
+              </el-button>
+            </template>
+          </el-popconfirm>
         </div>
         <div class="post-stats">
           <span class="post-time">{{ new Date(post.created_at).toLocaleString() }}</span>
@@ -472,8 +569,8 @@ onMounted(async () => {
           <el-icon><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path d="M7.493 18.75c-.425 0-.82-.236-.975-.632A7.48 7.48 0 0 1 6 15.375c0-1.75.599-3.358 1.602-4.634.151-.192.373-.309.6-.397.473-.183.89-.514 1.212-.924a9.042 9.042 0 0 1 2.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 0 0 .322-1.672V3a.75.75 0 0 1 .75-.75 2.25 2.25 0 0 1 2.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 0 1-2.649 7.521c-.388.482-.987.729-1.605.729H14.23c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 0 0-1.423-.23h-.777Z" clip-rule="evenodd" /></svg></el-icon>
           {{ post.like_count || 0 }}
         </el-button>
-        <el-dropdown trigger="click" @visible-change="() => selectedFolders = []" placement="bottom">
-          <el-button>
+        <el-dropdown trigger="click" @visible-change="async (visible) => { if (visible) await fetchFavoriteStatus() }" placement="bottom">
+          <el-button :type="post.is_favorited ? 'primary' : 'default'">
             <el-icon><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.005Z" clip-rule="evenodd" /></svg></el-icon>
             收藏
           </el-button>

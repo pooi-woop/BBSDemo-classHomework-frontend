@@ -92,13 +92,26 @@ const fetchPosts = async () => {
     isLoading.value = true
     error.value = ''
     
-    const response = await postApi.getPosts({
+    const params: any = {
       page: currentPage.value,
       page_size: pageSize.value
-    })
+    }
     
-    posts.value = response.posts || response || []
-    total.value = response.total || 0
+    // 如果有搜索关键词，使用搜索接口
+    if (searchKeyword.value.trim()) {
+      const searchParams = {
+        ...params,
+        keyword: searchKeyword.value.trim()
+      }
+      const response = await postApi.searchPosts(searchParams)
+      posts.value = response.posts || response || []
+      total.value = response.total || 0
+    } else {
+      // 否则获取所有帖子
+      const response = await postApi.getPosts(params)
+      posts.value = response.posts || response || []
+      total.value = response.total || 0
+    }
   } catch (err: any) {
     console.error('获取帖子列表错误:', err)
     error.value = err.response?.error || '获取帖子列表失败'
@@ -107,16 +120,30 @@ const fetchPosts = async () => {
   }
 }
 
+// 处理帖子搜索
+const handlePostSearch = () => {
+  currentPage.value = 1
+  fetchPosts()
+}
+
 // 获取评论列表
 const fetchComments = async () => {
   try {
     isLoading.value = true
     error.value = ''
     
-    const response = await adminApi.getComments({
+    const params: any = {
       page: currentPage.value,
       page_size: pageSize.value
-    })
+    }
+    
+    // 如果有搜索关键词，添加到参数中
+    if (searchKeyword.value.trim()) {
+      params.keyword = searchKeyword.value.trim()
+    }
+    
+    // 使用新的评论搜索API
+    const response = await commentApi.getComments('', params)
     
     comments.value = response.comments || response.data || response || []
     total.value = response.total || 0
@@ -126,6 +153,12 @@ const fetchComments = async () => {
   } finally {
     isLoading.value = false
   }
+}
+
+// 处理评论搜索
+const handleCommentSearch = () => {
+  currentPage.value = 1
+  fetchComments()
 }
 
 // 处理标签切换
@@ -381,6 +414,22 @@ const viewPostDetail = (postId: string) => {
       </el-tab-pane>
       
       <el-tab-pane label="帖子管理" name="posts">
+        <!-- 搜索框 -->
+        <div class="search-container" style="margin-bottom: 1rem">
+          <el-input
+            v-model="searchKeyword"
+            placeholder="搜索帖子标题或内容..."
+            clearable
+            @keyup.enter="handlePostSearch"
+            style="width: 300px"
+          >
+            <template #append>
+              <el-button @click="handlePostSearch">
+                搜索
+              </el-button>
+            </template>
+          </el-input>
+        </div>
         <!-- 帖子列表 -->
         <el-table
           v-loading="isLoading"
@@ -431,6 +480,22 @@ const viewPostDetail = (postId: string) => {
       </el-tab-pane>
       
       <el-tab-pane label="评论管理" name="comments">
+        <!-- 搜索框 -->
+        <div class="search-container" style="margin-bottom: 1rem">
+          <el-input
+            v-model="searchKeyword"
+            placeholder="搜索评论内容..."
+            clearable
+            @keyup.enter="handleCommentSearch"
+            style="width: 300px"
+          >
+            <template #append>
+              <el-button @click="handleCommentSearch">
+                搜索
+              </el-button>
+            </template>
+          </el-input>
+        </div>
         <!-- 评论列表 -->
         <el-table
           v-loading="isLoading"
