@@ -121,35 +121,31 @@ const fetchComments = async () => {
     let fetchedComments = response.comments || response.data || []
     totalComments.value = response.total || 0
     
-    // 分离主评论和回复
-    const mainComments = []
-    const repliesMap = new Map()
-    
-    // 首先将所有评论分类
+    // 为每个主评论获取回复
+    const processedComments = []
     for (const comment of fetchedComments) {
-      if (comment.comment_id) {
-        // 这是一个回复
-        if (!repliesMap.has(comment.comment_id)) {
-          repliesMap.set(comment.comment_id, [])
+      try {
+        const repliesResponse = await commentApi.getReplies(comment.id, {
+          page: 1,
+          page_size: 10
+        })
+        const processedComment = {
+          ...comment,
+          replies: repliesResponse.replies || []
         }
-        repliesMap.get(comment.comment_id).push(comment)
-      } else {
-        // 这是一个主评论
-        mainComments.push({
+        processedComments.push(processedComment)
+        console.log(`获取评论 ${comment.id} 的回复:`, processedComment.replies)
+      } catch (err) {
+        console.error(`获取评论 ${comment.id} 的回复失败:`, err)
+        const processedComment = {
           ...comment,
           replies: []
-        })
+        }
+        processedComments.push(processedComment)
       }
     }
     
-    // 为每个主评论添加回复
-    for (const comment of mainComments) {
-      if (repliesMap.has(comment.id)) {
-        comment.replies = repliesMap.get(comment.id)
-      }
-    }
-    
-    comments.value = mainComments
+    comments.value = processedComments
     console.log('解析后的评论列表（含回复）:', comments.value)
   } catch (err: any) {
     console.error('获取评论列表错误', err)
