@@ -99,8 +99,6 @@ const handleLogoutAll = async () => {
     <!-- 导航链接 -->
     <el-menu-item index="/">首页</el-menu-item>
     <el-menu-item index="/forum">论坛</el-menu-item>
-    <el-menu-item index="/news">资讯</el-menu-item>
-    <el-menu-item index="/community">社区</el-menu-item>
     <el-menu-item index="/about">关于</el-menu-item>
 
     <!-- 搜索框 -->
