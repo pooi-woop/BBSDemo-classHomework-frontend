@@ -55,33 +55,18 @@ const fetchPostDetail = async () => {
     console.log('visits字段:', post.value.visits)
     console.log('visit_count字段:', post.value.visit_count)
     
-    // 延迟重新获取帖子详情，确保获取到最新的浏览量
+    // 延迟获取点赞、收藏和评论状态，确保数据一致性
     setTimeout(async () => {
-      console.log('延迟重新获取帖子详情以更新浏览量...')
+      console.log('延迟获取点赞、收藏和评论状态...')
       try {
-        // 确保postId仍然有效
-        if (!postId.value) {
-          console.error('postId无效，无法重新获取帖子详情')
-          return
-        }
-        
-        const refreshedResponse = await postApi.getPostDetail(postId.value)
-        console.log('重新获取帖子详情响应:', refreshedResponse)
-        post.value = refreshedResponse.post || refreshedResponse
-        // 打印浏览量信息，检查多种可能的字段名
-        console.log('完整的帖子数据:', post.value)
-        console.log('views字段:', post.value.views)
-        console.log('view_count字段:', post.value.view_count)
-        console.log('visits字段:', post.value.visits)
-        console.log('visit_count字段:', post.value.visit_count)
         // 重新获取点赞、收藏和评论状态，确保数据一致性
         await fetchLikeStatus()
         await fetchFavoriteStatus()
         await fetchComments()
       } catch (err) {
-        console.error('重新获取帖子详情失败:', err)
+        console.error('获取状态失败:', err)
       }
-    }, 1000) // 延迟1秒后重新获取
+    }, 1000) // 延迟1秒后获取状态
   } catch (err: any) {
     console.error('获取帖子详情错误:', err)
     console.error('错误状态码:', err.response?.status)
