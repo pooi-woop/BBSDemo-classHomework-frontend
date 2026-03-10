@@ -227,7 +227,7 @@ const submitReply = async (parentCommentId: string) => {
   isSubmittingReply.value = true
   try {
     const response = await commentApi.createReply({
-      comment_id: Number(parentCommentId),
+      comment_id: parentCommentId,
       content: replyContent.value
     })
     
