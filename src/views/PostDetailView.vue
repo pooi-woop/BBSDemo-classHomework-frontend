@@ -68,7 +68,12 @@ const fetchPostDetail = async () => {
         const refreshedResponse = await postApi.getPostDetail(postId.value)
         console.log('重新获取帖子详情响应:', refreshedResponse)
         post.value = refreshedResponse.post || refreshedResponse
-        console.log('更新后的浏览量:', post.value.views)
+        // 打印浏览量信息，检查多种可能的字段名
+        console.log('完整的帖子数据:', post.value)
+        console.log('views字段:', post.value.views)
+        console.log('view_count字段:', post.value.view_count)
+        console.log('visits字段:', post.value.visits)
+        console.log('visit_count字段:', post.value.visit_count)
         // 重新获取点赞、收藏和评论状态，确保数据一致性
         await fetchLikeStatus()
         await fetchFavoriteStatus()
@@ -116,35 +121,35 @@ const fetchComments = async () => {
     let fetchedComments = response.comments || response.data || []
     totalComments.value = response.total || 0
     
-    // 创建新的评论数组，确保每个评论对象都是响应式的
-    const processedComments = []
+    // 分离主评论和回复
+    const mainComments = []
+    const repliesMap = new Map()
     
-    // 获取每个评论的楼中楼回复
-    for (let comment of fetchedComments) {
-      try {
-        const repliesResponse = await commentApi.getReplies(comment.id, {
-          page: 1,
-          page_size: 10
-        })
-        // 创建新的评论对象，添加replies属性
-        const processedComment = {
-          ...comment,
-          replies: repliesResponse.replies || []
+    // 首先将所有评论分类
+    for (const comment of fetchedComments) {
+      if (comment.comment_id) {
+        // 这是一个回复
+        if (!repliesMap.has(comment.comment_id)) {
+          repliesMap.set(comment.comment_id, [])
         }
-        processedComments.push(processedComment)
-        console.log(`获取评论 ${comment.id} 的回复:`, processedComment.replies)
-      } catch (err) {
-        console.error(`获取评论 ${comment.id} 的回复失败:`, err)
-        // 创建新的评论对象，添加空的replies属性
-        const processedComment = {
+        repliesMap.get(comment.comment_id).push(comment)
+      } else {
+        // 这是一个主评论
+        mainComments.push({
           ...comment,
           replies: []
-        }
-        processedComments.push(processedComment)
+        })
       }
     }
     
-    comments.value = processedComments
+    // 为每个主评论添加回复
+    for (const comment of mainComments) {
+      if (repliesMap.has(comment.id)) {
+        comment.replies = repliesMap.get(comment.id)
+      }
+    }
+    
+    comments.value = mainComments
     console.log('解析后的评论列表（含回复）:', comments.value)
   } catch (err: any) {
     console.error('获取评论列表错误', err)
@@ -222,8 +227,7 @@ const submitReply = async (parentCommentId: string) => {
   isSubmittingReply.value = true
   try {
     const response = await commentApi.createReply({
-      post_id: postId.value,
-      parent_id: parentCommentId,
+      comment_id: parentCommentId,
       content: replyContent.value
     })
     
