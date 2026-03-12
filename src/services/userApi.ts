@@ -302,3 +302,31 @@ export const blockApi = {
     return api.get('/my/blocked', { params })
   }
 }
+
+// 信箱相关 API
+export const inboxApi = {
+  // 获取收信箱消息
+  getMessages: (params: { page: number; page_size: number }): Promise<any> => {
+    return api.get('/inbox', { params })
+  },
+  
+  // 清空收信箱
+  clearInbox: (): Promise<any> => {
+    return api.delete('/inbox')
+  }
+}
+
+// AI 相关 API
+export const aiApi = {
+  // AI 问答
+  ask: (data: { question: string }): Promise<any> => {
+    return api.post('/ai/ask', data)
+  },
+  
+  // AI 问答（流式传输）
+  askStream: (data: { question: string }): Promise<any> => {
+    return api.post('/ai/ask/stream', data, {
+      responseType: 'stream'
+    })
+  }
+}

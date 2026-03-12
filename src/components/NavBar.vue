@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { User, SwitchButton, Search, Refresh, Setting } from '@element-plus/icons-vue'
+import { User, SwitchButton, Search, Refresh, Setting, Message, ChatLineRound } from '@element-plus/icons-vue'
 import { tokenManager } from '@/utils/auth'
 import { ElMessage } from 'element-plus'
 
@@ -99,6 +99,7 @@ const handleLogoutAll = async () => {
     <!-- 导航链接 -->
     <el-menu-item index="/">首页</el-menu-item>
     <el-menu-item index="/forum">论坛</el-menu-item>
+    <el-menu-item index="/ai">AI 问答</el-menu-item>
     <el-menu-item index="/about">关于</el-menu-item>
 
     <!-- 搜索框 -->
@@ -112,6 +113,11 @@ const handleLogoutAll = async () => {
         class="search-input"
       />
     </div>
+
+    <!-- 信箱图标 -->
+    <el-menu-item v-if="isLoggedIn" index="/inbox" class="inbox-item">
+      <el-icon class="inbox-icon"><Message /></el-icon>
+    </el-menu-item>
 
     <!-- 右侧空白填充 -->
     <div class="flex-grow" />
@@ -230,6 +236,19 @@ const handleLogoutAll = async () => {
 
 .search-input :deep(.el-input__prefix) {
   color: rgba(255, 255, 255, 0.6);
+}
+
+.inbox-item {
+  padding: 0 15px !important;
+}
+
+.inbox-icon {
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.inbox-icon:hover {
+  color: #fff;
 }
 
 /* 移动端适配 */
