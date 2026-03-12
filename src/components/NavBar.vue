@@ -114,13 +114,13 @@ const handleLogoutAll = async () => {
       />
     </div>
 
+    <!-- 右侧空白填充 -->
+    <div class="flex-grow" />
+
     <!-- 信箱图标 -->
     <el-menu-item v-if="isLoggedIn" index="/inbox" class="inbox-item">
       <el-icon class="inbox-icon"><Message /></el-icon>
     </el-menu-item>
-
-    <!-- 右侧空白填充 -->
-    <div class="flex-grow" />
 
     <!-- 用户区域 - 已登录 -->
     <el-sub-menu v-if="isLoggedIn" index="user">
