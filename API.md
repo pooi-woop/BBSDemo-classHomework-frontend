@@ -1,5 +1,36 @@
 # API 接口文档
 
+## 重要说明
+
+### ID 字段类型
+
+**所有 ID 字段（如 `id`、`user_id`、`post_id`、`comment_id`、`folder_id` 等）在 JSON 请求和响应中均为字符串类型**，以避免 JavaScript 数字精度丢失问题。
+
+例如：
+```json
+{
+  "id": "1234567890123456789",
+  "user_id": "1234567890123456789",
+  "post_id": "1234567890123456789"
+}
+```
+
+### 认证方式
+
+需要认证的接口必须在请求头中携带 `Authorization` 字段：
+```http
+Authorization: Bearer <access_token>
+```
+
+### 时间格式
+
+所有时间字段均采用 ISO 8601 格式（UTC）：
+```
+2023-01-01T00:00:00Z
+```
+
+---
+
 ## 1. 认证接口
 
 ### 1.1 发送验证码
@@ -423,7 +454,6 @@ avatar: <file>
 }
 ```
 
-**注意：** 所有 ID 字段（如 `id`、`user_id`、`post_id` 等）在 JSON 响应中均为**字符串类型**，以避免 JavaScript 数字精度丢失问题。
 ```
 
 **错误返回：**
@@ -705,14 +735,12 @@ GET /api/posts/1234567890123456789
 **错误返回：**
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
-| 400 | `{"error": "Invalid post ID"}` | 无效的帖子ID |
 | 404 | `{"error": "Post not found"}` | 帖子不存在 |
 | 500 | `{"error": "Failed to get post"}` | 获取失败 |
 
 **测试用例：**
 1. 正常获取：`GET /api/posts/1`
 2. 不存在的帖子：`GET /api/posts/999`
-3. 无效的帖子ID：`GET /api/posts/invalid-id`
 
 ### 3.4 创建帖子
 
@@ -869,14 +897,12 @@ GET /api/posts/1234567890123456789/comments?page=1&page_size=10
 **错误返回：**
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
-| 400 | `{"error": "Invalid post ID"}` | 无效的帖子ID |
 | 404 | `{"error": "Post not found"}` | 帖子不存在 |
 | 500 | `{"error": "Failed to get comments"}` | 获取失败 |
 
 **测试用例：**
 1. 正常获取：`GET /api/posts/1/comments?page=1&page_size=10`
 2. 不存在的帖子：`GET /api/posts/999/comments`
-3. 无效的帖子ID：`GET /api/posts/invalid-id/comments`
 
 ### 4.2 创建评论
 
@@ -887,7 +913,7 @@ Content-Type: application/json
 Authorization: Bearer <access_token>
 
 {
-  "post_id": 1234567890123456789,
+  "post_id": "1234567890123456789",
   "content": "Great post!"
 }
 ```
@@ -896,9 +922,9 @@ Authorization: Bearer <access_token>
 ```json
 {
   "comment": {
-    "id": 1,
-    "post_id": 1234567890123456789,
-    "user_id": 1234567890123456789,
+    "id": "1",
+    "post_id": "1234567890123456789",
+    "user_id": "1234567890123456789",
     "content": "Great post!",
     "like_count": 0,
     "created_at": "2023-01-01T00:00:00Z"
@@ -916,11 +942,59 @@ Authorization: Bearer <access_token>
 | 500 | `{"error": "Failed to create comment"}` | 创建失败 |
 
 **测试用例：**
-1. 正常创建：`{"post_id": 1, "content": "Great post!"}`
-2. 不存在的帖子：`{"post_id": 999, "content": "Great post!"}`
-3. 空内容：`{"post_id": 1, "content": ""}`
+1. 正常创建：`{"post_id": "1234567890123456789", "content": "Great post!"}`
+2. 不存在的帖子：`{"post_id": "999", "content": "Great post!"}`
+3. 空内容：`{"post_id": "1", "content": ""}`
 
-### 4.3 删除评论
+### 4.3 创建评论回复（楼中楼）
+
+**请求：**
+```http
+POST /api/comments
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+  "comment_id": "1",
+  "content": "Thanks for your reply!"
+}
+```
+
+**参数说明：**
+- `comment_id`：父评论 ID（必填），表示回复哪条评论
+- `content`：回复内容（必填）
+- 注意：创建回复时不需要提供 `post_id`，系统会自动从父评论获取
+
+**响应：**
+```json
+{
+  "comment": {
+    "id": "2",
+    "post_id": "1234567890123456789",
+    "comment_id": "1",
+    "user_id": "1234567890123456789",
+    "content": "Thanks for your reply!",
+    "like_count": 0,
+    "created_at": "2023-01-01T00:00:00Z"
+  }
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 400 | `{"error": "comment_id is required"}` | 评论 ID 不能为空 |
+| 400 | `{"error": "content is required"}` | 内容不能为空 |
+| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 404 | `{"error": "Parent comment not found"}` | 父评论不存在 |
+| 500 | `{"error": "Failed to create comment"}` | 创建失败 |
+
+**测试用例：**
+1. 正常回复：`{"comment_id": "1", "content": "Thanks!"}`
+2. 不存在的评论：`{"comment_id": "999", "content": "Thanks!"}`
+3. 空内容：`{"comment_id": "1", "content": ""}`
+
+### 4.4 删除评论
 
 **请求：**
 ```http
@@ -948,7 +1022,7 @@ Authorization: Bearer <access_token>
 2. 无权删除：使用其他用户的 token 删除评论
 3. 不存在的评论：`DELETE /api/comments/999`
 
-### 4.4 搜索评论
+### 4.5 搜索评论
 
 **请求：**
 ```http
@@ -1003,7 +1077,7 @@ GET /api/comments?keyword=Hello&page=1&page_size=10
 2. 空关键词：`GET /api/comments?keyword=`
 3. 无结果搜索：`GET /api/comments?keyword=不存在的关键词`
 
-### 4.5 获取回复（楼中楼）
+### 4.6 获取回复（楼中楼）
 
 **请求：**
 ```http
@@ -1015,15 +1089,15 @@ GET /api/comments/1/replies?page=1&page_size=10
 {
   "replies": [
     {
-      "id": 2,
-      "post_id": 1234567890123456789,
-      "user_id": 1234567890123456789,
-      "parent_id": 1,
+      "id": "2",
+      "post_id": "1234567890123456789",
+      "user_id": "1234567890123456789",
+      "comment_id": "1",
       "content": "Thanks!",
       "like_count": 1,
       "created_at": "2023-01-01T00:00:00Z",
       "user": {
-        "id": 1234567890123456789,
+        "id": "1234567890123456789",
         "email": "user@example.com",
         "nickname": "User",
         "avatar": ""
@@ -1102,7 +1176,7 @@ Authorization: Bearer <access_token>
 1. 正常取消：`DELETE /api/posts/1/like`
 2. 未点赞取消：`DELETE /api/posts/1/like`（未点赞时取消）
 
-### 5.3 查询帖子点赞状态
+### 5.3 查询帖子点赞状态和数量
 
 **请求：**
 ```http
@@ -1119,6 +1193,13 @@ Authorization: Bearer <access_token>
 }
 ```
 
+**响应字段说明：**
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `post_id` | string | 帖子 ID |
+| `is_liked` | boolean | 当前用户是否点赞了该帖子 |
+| `like_count` | number | 该帖子的总点赞数量 |
+
 **错误返回：**
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
@@ -1128,8 +1209,8 @@ Authorization: Bearer <access_token>
 | 500 | `{"error": "Failed to get like count"}` | 查询点赞数量失败 |
 
 **测试用例：**
-1. 已点赞查询：`GET /api/posts/1/like`（已点赞的帖子）
-2. 未点赞查询：`GET /api/posts/1/like`（未点赞的帖子）
+1. 已点赞查询：`GET /api/posts/1234567890123456789/like`（已点赞的帖子）
+2. 未点赞查询：`GET /api/posts/1234567890123456789/like`（未点赞的帖子）
 3. 不存在的帖子：`GET /api/posts/999/like`
 
 ### 5.4 点赞评论
@@ -1390,7 +1471,7 @@ Authorization: Bearer <access_token>
 1. 正常取消：`DELETE /api/posts/1/favorite`
 2. 未收藏取消：`DELETE /api/posts/1/favorite`（未收藏时取消）
 
-### 6.7 查询帖子收藏状态
+### 6.7 查询帖子收藏状态和收藏夹信息
 
 **请求：**
 ```http
@@ -1398,21 +1479,48 @@ GET /api/posts/1234567890123456789/favorite
 Authorization: Bearer <access_token>
 ```
 
-**响应：**
+**响应（已收藏）：**
 ```json
 {
   "post_id": "1234567890123456789",
   "is_favorited": true,
   "folders": [
     {
-      "id": 1,
+      "id": "1",
       "user_id": "1234567890123456789",
       "name": "我的收藏",
+      "is_default": false,
       "created_at": "2023-01-01T00:00:00Z"
+    },
+    {
+      "id": "2",
+      "user_id": "1234567890123456789",
+      "name": "技术文章",
+      "is_default": false,
+      "created_at": "2023-01-02T00:00:00Z"
     }
   ]
 }
 ```
+
+**响应（未收藏）：**
+```json
+{
+  "post_id": "1234567890123456789",
+  "is_favorited": false,
+  "folders": []
+}
+```
+
+**响应字段说明：**
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `post_id` | string | 帖子 ID |
+| `is_favorited` | boolean | 当前用户是否收藏了该帖子 |
+| `folders` | array | 该帖子被收藏到的收藏夹列表（未收藏时为空数组） |
+| `folders[].id` | string | 收藏夹 ID |
+| `folders[].name` | string | 收藏夹名称 |
+| `folders[].is_default` | boolean | 是否为默认收藏夹 |
 
 **错误返回：**
 | 状态码 | 错误信息 | 说明 |
@@ -1422,9 +1530,10 @@ Authorization: Bearer <access_token>
 | 500 | `{"error": "Failed to get favorite status"}` | 查询失败 |
 
 **测试用例：**
-1. 已收藏查询：`GET /api/posts/1/favorite`（已收藏的帖子）
-2. 未收藏查询：`GET /api/posts/1/favorite`（未收藏的帖子）
-3. 不存在的帖子：`GET /api/posts/999/favorite`
+1. 已收藏查询（单收藏夹）：`GET /api/posts/1234567890123456789/favorite`
+2. 已收藏查询（多收藏夹）：帖子被收藏到多个收藏夹
+3. 未收藏查询：`GET /api/posts/1234567890123456789/favorite`（未收藏的帖子）
+4. 不存在的帖子：`GET /api/posts/999/favorite`
 
 ### 6.8 移动收藏
 
@@ -1710,9 +1819,166 @@ Authorization: Bearer <access_token>
 **测试用例：**
 1. 正常获取：`GET /api/my/posts?page=1&page_size=10`
 
-## 9. 管理员接口
+## 9. 收信箱
 
-### 9.1 管理员删除帖子
+### 9.1 获取收信箱消息
+
+当有人回复你的帖子或评论时，会收到消息通知。
+
+**消息类型：**
+- `reply_post` - 有人回复了你的帖子
+- `reply_comment` - 有人回复了你的评论
+
+**请求：**
+```http
+GET /api/inbox?page=1&page_size=10
+Authorization: Bearer <access_token>
+```
+
+**响应：**
+```json
+{
+  "messages": [
+    {
+      "post_id": "1234567890123456789",
+      "comment_id": "456",
+      "sender_id": "789",
+      "type": "reply_comment",
+      "time": 1234567890
+    },
+    {
+      "post_id": "1234567890123456789",
+      "sender_id": "789",
+      "type": "reply_post",
+      "time": 1234567891
+    }
+  ],
+  "total": 2,
+  "page": 1,
+  "page_size": 10
+}
+```
+
+**字段说明：**
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `post_id` | string | 帖子ID，点击可跳转到对应帖子 |
+| `comment_id` | string | 评论ID（回复帖子时为空或不存在） |
+| `sender_id` | string | 回复者用户ID，可用于获取发送者信息 |
+| `type` | string | 消息类型：`reply_post` 或 `reply_comment` |
+| `time` | number | 消息时间戳（Unix时间，秒级） |
+
+**前端使用示例：**
+```typescript
+// 获取信箱消息
+const response = await inboxApi.getMessages({
+  page: 1,
+  page_size: 10
+})
+
+// 处理消息列表
+const messages = response.messages
+messages.forEach(msg => {
+  // 根据类型判断是回复帖子还是评论
+  if (msg.type === 'reply_post') {
+    console.log('有人回复了你的帖子')
+  } else if (msg.type === 'reply_comment') {
+    console.log('有人回复了你的评论')
+  }
+  
+  // 跳转到帖子详情
+  router.push(`/post/${msg.post_id}`)
+})
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 500 | `{"error": "Failed to get inbox"}` | 获取失败 |
+
+**测试用例：**
+1. 正常获取：`GET /api/inbox?page=1&page_size=10`
+2. 空收信箱：新用户获取收信箱
+
+### 9.2 清空收信箱
+
+**请求：**
+```http
+DELETE /api/inbox
+Authorization: Bearer <access_token>
+```
+
+**响应：**
+```json
+{
+  "message": "Inbox cleared"
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 500 | `{"error": "Failed to clear inbox"}` | 清空失败 |
+
+**前端使用示例：**
+```typescript
+// 清空信箱
+await inboxApi.clearInbox()
+console.log('信箱已清空')
+
+// 清空后刷新消息列表
+await fetchMessages()
+```
+
+**测试用例：**
+1. 正常清空：`DELETE /api/inbox`
+2. 清空后验证：再次获取信箱应返回空列表
+
+## 10. 管理员接口
+
+### 10.1 管理员删除帖子
+
+**请求：**
+```http
+GET /api/my/posts?page=1&page_size=10
+Authorization: Bearer <access_token>
+```
+
+**响应：**
+```json
+{
+  "posts": [
+    {
+      "id": 1234567890123456789,
+      "user_id": 1234567890123456789,
+      "title": "Hello World",
+      "content": "This is a test post",
+      "views": 10,
+      "like_count": 5,
+      "comment_count": 3,
+      "created_at": "2023-01-01T00:00:00Z"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "page_size": 10
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 500 | `{"error": "Failed to get posts"}` | 获取失败 |
+
+**测试用例：**
+1. 正常获取：`GET /api/my/posts?page=1&page_size=10`
+
+## 10. 管理员接口
+
+### 10.1 管理员删除帖子
 
 **请求：**
 ```http
@@ -1740,7 +2006,7 @@ Authorization: Bearer <admin_access_token>
 2. 普通用户尝试：使用普通用户 token 访问
 3. 不存在的帖子：`DELETE /api/admin/posts/999`
 
-### 9.2 管理员删除评论
+### 10.2 管理员删除评论
 
 **请求：**
 ```http
@@ -1768,7 +2034,7 @@ Authorization: Bearer <admin_access_token>
 2. 普通用户尝试：使用普通用户 token 访问
 3. 不存在的评论：`DELETE /api/admin/comments/999`
 
-### 9.3 管理员查看所有评论
+### 10.3 管理员查看所有评论
 
 **请求：**
 ```http
@@ -1823,7 +2089,7 @@ Authorization: Bearer <admin_access_token>
 2. 普通用户尝试：使用普通用户 token 访问
 3. 分页查询：`GET /api/admin/comments?page=2&page_size=5`
 
-### 9.4 禁言用户
+### 10.4 禁言用户
 
 **请求：**
 ```http
@@ -1851,7 +2117,7 @@ Authorization: Bearer <admin_access_token>
 2. 普通用户尝试：使用普通用户 token 访问
 3. 不存在的用户：`PUT /api/admin/users/999/ban`
 
-### 9.4 解除禁言
+### 10.5 解除禁言
 
 **请求：**
 ```http
@@ -1879,7 +2145,7 @@ Authorization: Bearer <admin_access_token>
 2. 普通用户尝试：使用普通用户 token 访问
 3. 不存在的用户：`PUT /api/admin/users/999/unban`
 
-### 9.5 查看所有用户
+### 10.6 查看所有用户
 
 **请求：**
 ```http
@@ -1926,9 +2192,9 @@ Authorization: Bearer <admin_access_token>
 2. 普通用户尝试：使用普通用户 token 访问
 3. 分页查询：`GET /api/admin/users?page=2&page_size=5`
 
-## 10. 中间件说明
+## 11. 中间件说明
 
-### 10.1 AuthRequired 中间件
+### 11.1 AuthRequired 中间件
 
 **功能：** 验证用户登录状态
 
@@ -1943,7 +2209,7 @@ router.Use(middleware.AuthRequired())
 - 将用户信息（userID, email, isAdmin）存入上下文
 - 令牌无效或过期时返回 401 错误
 
-### 10.2 AdminRequired 中间件
+### 11.2 AdminRequired 中间件
 
 **功能：** 验证管理员权限
 
@@ -1960,7 +2226,7 @@ router.Use(middleware.AdminRequired())
 
 **注意：** AdminRequired 中间件必须与 AuthRequired 中间件一起使用，且 AuthRequired 必须在前面。
 
-## 11. 错误代码汇总
+## 12. 错误代码汇总
 
 | 状态码 | 含义 | 常见场景 |
 |--------|------|---------|
