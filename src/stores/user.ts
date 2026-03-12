@@ -46,7 +46,7 @@ export const useUserStore = defineStore('user', () => {
     }
     // 如果是相对路径（以 / 开头），转换为完整的 URL
     if (avatar.startsWith('/')) {
-      return `${config.apiBaseUrl}${avatar}`
+      return `http://localhost:8080${avatar}`
     }
     // 如果已经是完整 URL，直接返回
     return avatar

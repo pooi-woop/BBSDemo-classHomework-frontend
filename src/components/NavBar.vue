@@ -125,7 +125,12 @@ const handleLogoutAll = async () => {
     <!-- 用户区域 - 已登录 -->
     <el-sub-menu v-if="isLoggedIn" index="user">
       <template #title>
-        <el-avatar :size="36" :src="userStore.avatarUrl" />
+        <el-avatar :size="36">
+          <img 
+            :src="userStore.avatarUrl" 
+            @error="(e) => e.target.src = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'"
+          />
+        </el-avatar>
         <span class="username">{{ userStore.displayName }}</span>
       </template>
       <el-menu-item index="profile">
