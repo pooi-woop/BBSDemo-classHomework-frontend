@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { inboxApi, commentApi, userApi } from '../services/userApi'
 import { tokenManager } from '../utils/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useUserStore } from '../stores/user'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const userStore = useUserStore()
