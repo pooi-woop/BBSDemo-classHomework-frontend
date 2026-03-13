@@ -38,6 +38,10 @@ onMounted(async () => {
       router.push('/login')
     }, 2000)
   } else {
+    // 确保用户信息已加载
+    if (!userStore.user.value) {
+      await userStore.fetchUserInfo()
+    }
     await fetchMessages()
   }
 })
