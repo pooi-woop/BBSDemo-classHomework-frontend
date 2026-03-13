@@ -9,6 +9,10 @@ import { useUserStore } from '@/stores/user'
 const router = useRouter()
 const userStore = useUserStore()
 
+// 计算属性获取用户信息
+const currentUser = computed(() => userStore.user.value)
+const currentUserId = computed(() => userStore.user.value?.id)
+
 interface Message {
   post_id: string
   comment_id?: string
@@ -38,14 +42,15 @@ onMounted(async () => {
       router.push('/login')
     }, 2000)
   } else {
-    // 确保用户信息已加载
-    console.log('Before fetchUserInfo - userStore.user.value:', userStore.user.value)
-    if (!userStore.user.value) {
-      console.log('Calling fetchUserInfo...')
-      await userStore.fetchUserInfo()
-      console.log('After fetchUserInfo - userStore.user.value:', userStore.user.value)
+    // 直接调用API获取用户信息，确保能获取到最新的用户信息
+    try {
+      console.log('Calling userApi.getUserInfo()...')
+      const userResponse = await userApi.getUserInfo()
+      console.log('User info response:', userResponse)
+      console.log('User ID:', userResponse.user?.id || userResponse.id)
+    } catch (err) {
+      console.error('获取用户信息错误:', err)
     }
-    console.log('Before fetchMessages - userStore.user.value:', userStore.user.value)
     await fetchMessages()
   }
 })
@@ -55,7 +60,7 @@ const fetchMessages = async () => {
     isLoading.value = true
     error.value = ''
     
-    console.log('当前登录用户ID:', userStore.user.value?.id)
+    console.log('当前登录用户ID:', currentUserId.value)
     console.log('请求收信箱参数:', { page: currentPage.value, page_size: pageSize.value })
     
     const response = await inboxApi.getMessages({

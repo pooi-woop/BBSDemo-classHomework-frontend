@@ -13,7 +13,9 @@ const app = createApp(App)
 // Element Plus 全局配置
 app.use(ElementPlus)
 
-app.use(createPinia())
+// 创建pinia实例并使用
+const pinia = createPinia()
+app.use(pinia)
 app.use(router)
 
 app.mount('#app')
