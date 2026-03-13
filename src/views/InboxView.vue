@@ -45,10 +45,15 @@ const fetchMessages = async () => {
     isLoading.value = true
     error.value = ''
     
+    console.log('当前登录用户ID:', userStore.user.value?.id)
+    console.log('请求收信箱参数:', { page: currentPage.value, page_size: pageSize.value })
+    
     const response = await inboxApi.getMessages({
       page: currentPage.value,
       page_size: pageSize.value
     })
+    
+    console.log('收信箱响应:', response)
     
     if (response) {
       if (response.messages && Array.isArray(response.messages)) {
