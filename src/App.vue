@@ -1,6 +1,14 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router'
+import { RouterView, onMounted } from 'vue'
 import NavBar from './components/NavBar.vue'
+import { useUserStore } from './stores/user'
+
+const userStore = useUserStore()
+
+onMounted(async () => {
+  // 初始化用户信息
+  await userStore.init()
+})
 </script>
 
 <template>
