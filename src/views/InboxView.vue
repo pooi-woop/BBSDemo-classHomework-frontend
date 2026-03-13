@@ -39,9 +39,13 @@ onMounted(async () => {
     }, 2000)
   } else {
     // 确保用户信息已加载
+    console.log('Before fetchUserInfo - userStore.user.value:', userStore.user.value)
     if (!userStore.user.value) {
+      console.log('Calling fetchUserInfo...')
       await userStore.fetchUserInfo()
+      console.log('After fetchUserInfo - userStore.user.value:', userStore.user.value)
     }
+    console.log('Before fetchMessages - userStore.user.value:', userStore.user.value)
     await fetchMessages()
   }
 })
