@@ -19,6 +19,9 @@ const fetchWeather = async () => {
     isLoading.value = true
     // 获取用户IP地址
     const ipResponse = await fetch('https://api.ipify.org?format=json')
+    if (!ipResponse.ok) {
+      throw new Error('获取IP地址失败')
+    }
     const ipData = await ipResponse.json()
     const userIp = ipData.ip
     
@@ -27,7 +30,8 @@ const fetchWeather = async () => {
     weatherData.value = response
   } catch (err: any) {
     console.error('获取天气信息失败:', err)
-    ElMessage.error('获取天气信息失败，请稍后重试')
+    const errorMessage = err.response?.data?.error || '获取天气信息失败，请稍后重试'
+    ElMessage.error(errorMessage)
   } finally {
     isLoading.value = false
   }
@@ -56,7 +60,12 @@ const fetchWeather = async () => {
         
         <!-- 天气信息卡片 -->
         <div class="weather-card">
-          <h3 class="weather-title">当前天气</h3>
+          <div class="weather-header">
+            <h3 class="weather-title">当前天气</h3>
+            <el-button type="text" size="small" @click="fetchWeather">
+              <el-icon><Refresh /></el-icon>
+            </el-button>
+          </div>
           <div v-if="isLoading" class="loading">
             <el-icon class="is-loading"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M512 64a448 448 0 1 1 0 896 448 448 0 0 1 0-896zm0 480a32 32 0 1 0 0 64 32 32 0 1 0 0-64zm0-192a32 32 0 1 0 0 64 32 32 0 1 0 0-64zm144-144a32 32 0 1 0 0 64 32 32 0 1 0 0-64zm-288 0a32 32 0 1 0 0 64 32 32 0 1 0 0-64zm224 224a32 32 0 1 0 0 64 32 32 0 1 0 0-64zm-112 112a32 32 0 1 0 0 64 32 32 0 1 0 0-64z"></path></svg></el-icon>
           </div>
@@ -146,11 +155,20 @@ const fetchWeather = async () => {
   color: #333;
 }
 
+.weather-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
 .weather-title {
   font-size: 1.2rem;
   font-weight: bold;
-  margin-bottom: 1rem;
-  text-align: center;
+  color: #409eff;
+}
+
+.weather-header :deep(.el-button) {
   color: #409eff;
 }
 
