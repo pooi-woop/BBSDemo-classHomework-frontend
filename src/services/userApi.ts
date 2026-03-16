@@ -328,3 +328,16 @@ export const aiApi = {
     return api.post('/ai/ask/stream', data)
   }
 }
+
+// 天气相关 API
+export const weatherApi = {
+  // 获取当前天气信息
+  getCurrentWeather: (): Promise<any> => {
+    return api.get('/weather')
+  },
+  
+  // 根据IP获取天气信息
+  getWeatherByIp: (ip: string): Promise<any> => {
+    return api.get('/weather/by-ip', { params: { ip } })
+  }
+}
