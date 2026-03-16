@@ -17,7 +17,7 @@ const searchKeyword = ref('')
 
 // 直接使用 store 的计算属性
 const isLoggedIn = computed(() => userStore.isLoggedIn)
-const isAdmin = computed(() => userStore.user.value?.is_admin || false)
+const isAdmin = computed(() => userStore.user?.is_admin || false)
 
 // 组件挂载时初始化
 onMounted(async () => {

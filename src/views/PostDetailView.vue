@@ -310,7 +310,7 @@ const handleFavorite = async () => {
         console.log('正在添加到收藏夹:', folderId)
         const response = await favoriteApi.addFavorite({
           post_id: stringPostId,
-          folder_id: folderId
+          folder_id: Number(folderId)
         })
         console.log('添加到收藏夹', folderId, '成功:', response)
       } catch (err: any) {

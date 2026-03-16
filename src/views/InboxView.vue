@@ -10,8 +10,8 @@ const router = useRouter()
 const userStore = useUserStore()
 
 // 计算属性获取用户信息
-const currentUser = computed(() => userStore.user.value)
-const currentUserId = computed(() => userStore.user.value?.id)
+const currentUser = computed(() => userStore.user)
+const currentUserId = computed(() => userStore.user?.id)
 
 interface Message {
   post_id: string
